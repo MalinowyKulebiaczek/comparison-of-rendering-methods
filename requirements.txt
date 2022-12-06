@@ -1,0 +1,5 @@
+pycollada
+numpy~=1.21.6
+
+Pillow~=9.3.0
+matplotlib~=3.6.2
