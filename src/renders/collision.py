@@ -2,8 +2,8 @@ from typing import Any, Optional
 
 import numpy as np
 
-from src.scenecomponents.scene import Scene
-from src.utilities.ray import Ray
+from scenecomponents.scene import Scene
+from utilities.ray import Ray
 
 
 class Hit:

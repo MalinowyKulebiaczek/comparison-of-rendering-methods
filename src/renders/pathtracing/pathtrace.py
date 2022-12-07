@@ -3,19 +3,47 @@ from multiprocessing import Pool
 
 import numpy as np
 
-from src.procedure import MainProcedure
-from src.renders.collision import get_collision
-from src.utilities.bitmap import Bitmap
-from src.utilities.ray import Ray
+from procedure import MainProcedure
+from renders.collision import get_collision
+from utilities.bitmap import Bitmap
+from utilities.ray import Ray
+
+from renders.sampler import RandomSampler
 
 PROCESS_PROCEDURE = None
 
+"""
+Comment by: Damian Łysomirski
+I don't think this mapping is present, it is available for various samplers and we don't use them.
+See:
+https://en.wikipedia.org/wiki/Path_tracing
+"""
 
 def hemisphere_mapping(point: np.array, normal: np.array) -> np.array:
     if np.dot(point, normal) < 0:
         return -point
     else:
         return point
+
+
+def random_three_vector():
+    """
+    Generates a random 3D unit vector (direction) with a uniform spherical distribution
+    Algo from http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution
+    :return:
+    """
+    u = np.random.random()
+    v = np.random.random()
+
+    theta = 2 * np.pi * u
+    phi = np.arccos(2 * v - 1)
+
+    x = np.sin( theta) * np.cos( phi )
+    y = np.sin( theta) * np.sin( phi )
+    z = np.cos( theta )
+
+    return np.array([x, y, z])
+
 
 
 def path_trace(procedure: MainProcedure) -> Bitmap:
@@ -33,7 +61,8 @@ def path_trace(procedure: MainProcedure) -> Bitmap:
     pool = Pool(os.cpu_count())
     tasks = {}
     rays = procedure.scene.camera.generate_initial_rays()
-    procedure.free_scene()  # for pickle
+    procedure.free_scene()  # for 
+    
 
     for (x, y), ray in rays:
         tasks[(x, y)] = pool.apply_async(trace_ray_task, (ray, procedure))
@@ -43,6 +72,7 @@ def path_trace(procedure: MainProcedure) -> Bitmap:
 
     for i, (x, y) in enumerate(tasks.keys()):
         bitmap[y, x] = tasks[(x, y)].get()
+    
 
     return bitmap
 
@@ -78,7 +108,7 @@ def trace_ray_task(
 def trace_ray(
         procedure: MainProcedure,
         ray: Ray,
-        # sampler: Sampler,
+        #sampler: RandomSampler, #Wydaje mi się 
         depth: int = 0,
 ) -> np.array:
     """
@@ -92,15 +122,10 @@ def trace_ray(
     if hit is None:
         return background(procedure, ray)
 
-    # new_ray = Ray(
-    #     origin=hit.coords,
-    #     direction=hemisphere_mapping(next(sampler), hit.normal),
-    # )
-
     new_ray = Ray(
-        origin=hit.coords,
-        direction=ray.direction - 2 * np.dot(ray.direction, hit.normal) * hit.normal,
-    )  # wziete stad https://github.com/arocks/puray/blob/episode06/engine.py - potencjalne miejsce, w ktorym jest blad
+         origin=hit.coords,
+         direction=hemisphere_mapping(random_three_vector(), hit.normal) #Tu mi się wydaje ze moze blad być
+       )
 
     probability = 1 / (2 * np.pi)
 
@@ -110,6 +135,9 @@ def trace_ray(
 
     cos_theta = np.dot(new_ray.direction, hit.normal)
 
+    """
+    Na wikipedi jest inaczej z tym brdf ?
+    """
     brdf = (hit_material.diffusion * cos_theta) + (  # diffusion brdf
             hit_material.reflectance
             * (np.dot(ray.direction, new_ray.direction) ** hit_material.shiness)

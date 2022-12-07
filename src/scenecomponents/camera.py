@@ -2,7 +2,7 @@ from typing import List, Tuple
 
 import numpy as np
 
-from src.utilities.ray import Ray
+from utilities.ray import Ray
 
 
 class Camera:

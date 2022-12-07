@@ -1,8 +1,8 @@
 import numpy as np
 from PIL import Image
 
-from src.utilities.bitmap import color
-from src.utilities.ray import Ray
+from utilities.bitmap import color
+from utilities.ray import Ray
 
 
 class Background:
