@@ -138,6 +138,7 @@ def trace_ray(
     """
     Na wikipedi jest inaczej z tym brdf ?
     """
+    
     brdf = (hit_material.diffusion * cos_theta) + (  # diffusion brdf
             hit_material.reflectance
             * (np.dot(ray.direction, new_ray.direction) ** hit_material.shiness)

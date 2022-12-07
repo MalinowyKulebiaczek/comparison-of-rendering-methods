@@ -23,7 +23,8 @@ class MainProcedure:
             scene_file: str,
             resolution: int,
             samples: int,
-            max_depth: int
+            max_depth: int,
+            environment_map: str,
     ):
         """
         Load configuration
@@ -31,7 +32,7 @@ class MainProcedure:
         self.scene_file = scene_file
         self.resolution = resolution
         self.background_color = None
-        self.environment_map = None
+        self.environment_map = environment_map
         self.scene = None
         self.background = None
         self.samples = samples
