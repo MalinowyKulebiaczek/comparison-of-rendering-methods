@@ -2,11 +2,11 @@ from procedure import MainProcedure
 from scenecomponents.scene import Scene
 
 if __name__ == '__main__':
-    file_dae = "src/scenes/test2.dae"
+    file_dae = "src/scenes/2lights_wall.dae"
     resolution = 200
     samples = 8
-    max_depth = 1
-    environment_map="src/scenes/env.jpg"
+    max_depth = 3
+    environment_map="src/scenes/hdr_bg.jpg"
 
     scene = Scene.load(file_dae, 200)
     output_file = "out.png"

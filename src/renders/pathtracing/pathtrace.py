@@ -133,6 +133,9 @@ def trace_ray(
 
     emmitance = hit_material.emmitance
 
+    if emmitance[0] > 0:
+        return emmitance
+
     cos_theta = np.dot(new_ray.direction, hit.normal)
 
     """
@@ -140,7 +143,7 @@ def trace_ray(
     """
     
     brdf = (hit_material.diffusion * cos_theta) + (  # diffusion brdf
-            hit_material.reflectance
+            hit_material.reflectance    #reflectance = specular w .dae
             * (np.dot(ray.direction, new_ray.direction) ** hit_material.shiness)
     )  # reflectance brdf
 
