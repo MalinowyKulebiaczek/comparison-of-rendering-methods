@@ -144,7 +144,7 @@ def trace_ray(
     
     brdf = (hit_material.diffusion * cos_theta) + (  # diffusion brdf
             hit_material.reflectance    #reflectance = specular w .dae
-            * (np.dot(ray.direction, new_ray.direction) ** hit_material.shiness)
+            * (np.dot(ray.direction, new_ray.direction) ** hit_material.shininess)
     )  # reflectance brdf
 
     incoming = trace_ray(procedure, new_ray, depth + 1)

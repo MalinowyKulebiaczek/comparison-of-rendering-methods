@@ -8,6 +8,7 @@ from src.renders.collision import get_collision
 from src.renders.pathtracing.pathtrace import background
 from src.utilities.ray import Ray
 
+
 # na razie zostawiam ten kod z tutoriala tak brzydko zakomentowany - posprzatam potem
 def normalize(vector):
     return vector / np.linalg.norm(vector)
@@ -61,6 +62,7 @@ objects = [
      'diffuse': np.array([0, 0.6, 0]), 'specular': np.array([1, 1, 1]), 'shininess': 100, 'reflection': 0.5},
     # { 'center': np.array([0, -9000, 0]), 'radius': 9000 - 0.7, 'ambient': np.array([0.1, 0.1, 0.1]), 'diffuse': np.array([0.6, 0.6, 0.6]), 'specular': np.array([1, 1, 1]), 'shininess': 100, 'reflection': 0.5 }
 ]
+
 
 # image = np.zeros((height, width, 3))
 # for i, y in enumerate(tqdm(np.linspace(screen[1], screen[3], height))):
@@ -125,35 +127,66 @@ def ray_tracing_render(procedure: MainProcedure, max_depth):
 
     image = np.zeros((height, width, 3))
 
-    rays = camera.generate_initial_rays()
     for i in tqdm(np.arange(height)):
         for j in np.arange(width):
-            pixel = np.array([camera.calculate_px(j), camera.calculate_py(i), 0]) #TODO sprawdzic czy tu na pewno 0 na koncu - czy to nie jest jakies zalozenie z tego tutoriala, ale raczej powinno tak zostac
+            pixel = np.array([camera.calculate_px(j), camera.calculate_py(i), 0])
+            # TODO sprawdzic czy tu na pewno 0 na koncu - czy to nie jest jakies zalozenie z tego tutoriala, ale raczej powinno tak zostac
+
             origin = camera.origin
             direction = normalize(pixel - origin)
 
-            color = np.zeros((3))
-            reflection = 1
+            color = np.zeros(3)
             ray = Ray(origin=origin, direction=direction)
 
-            for k in range(max_depth):
-                hit = get_collision(ray, procedure.scene)
-
-                if hit is None:
-                    color = background(procedure, ray)
-                else:
-                    color = np.array([0.5, 0.5, 0.5])
+            hit = get_collision(ray, procedure.scene)
+            if hit is None:
+                color = background(procedure, ray)
+            else:
+                light_shining_on_hit, direction_from_hitpoint_to_light = get_light_that_shines_on_point(procedure.scene,
+                                                                                                        hit.coords)
+                if light_shining_on_hit is not None:
+                    hit_material = procedure.scene.get_material(hit.material_id)
+                    direction_from_point_to_camera = normalize(origin - hit.coords)
+                    color = get_blinn_phong(hit_material, light_shining_on_hit, direction_from_hitpoint_to_light,
+                                            direction_from_point_to_camera, hit.normal)
 
             image[i, j] = np.clip(color, 0, 1)
-    plt.imsave('image2.png', image)
+    plt.imsave('image3_colors.png', image)
 
 
+def get_light_that_shines_on_point(scene: Scene, point):
+    for light in scene.lights:
+        direction_from_point_to_light = normalize(light.position - point)
+        ray = Ray(origin=point, direction=direction_from_point_to_light)
+        hit = get_collision(ray, scene)
+        if hit is None:
+            # if there is no object between the point and light then it means this light shines on object
+            return light, direction_from_point_to_light
+    return None, None
 
 
+def get_blinn_phong(hit_material, light, direction_from_point_to_light, direction_from_point_to_camera,
+                    normal_to_surface):
+    illumination = np.zeros(3)
+    # ambient
+    illumination += hit_material.ambient * light.color  # tbh should probably be sth like light.ambient but lgith seems noty to have such field
+    # diffuse
+    illumination += hit_material.diffusion * np.dot(direction_from_point_to_light, normal_to_surface)
+    # specular
+    H = normalize(direction_from_point_to_light + direction_from_point_to_camera)
+    illumination += hit_material.specular * np.dot(normal_to_surface, H) ** (hit_material.shininess / 4)
+
+    # TODO dorobic reflection
+    # color = np.zeros(3)
+    # reflection = 1
+    # color += reflection * illumination
+    # reflection *= hit_material.emmitance
+
+    return illumination
 
 
 if __name__ == '__main__':
-    file_dae = "scenes/spheres.dae"
+    file_dae = "scenes/spheres_color.dae"
     resolution = 200
     samples = 8
     max_depth = 3
@@ -168,7 +201,7 @@ if __name__ == '__main__':
         samples=samples,
         max_depth=max_depth,
         environment_map=environment_map
-    )#.render(output_file)
+    )  # .render(output_file)
 
     procedure.load_scene()
     procedure.load_background()
@@ -179,7 +212,3 @@ if __name__ == '__main__':
 
     MAX_DEPTH = 1
     ray_tracing_render(procedure, MAX_DEPTH)
-
-
-
-
