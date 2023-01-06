@@ -16,4 +16,5 @@ if __name__ == "__main__":
         samples=samples,
         max_depth=max_depth,
         environment_map=environment_map,
-    ).renderRayTrace(output_file)
+        # ).renderRayTrace(output_file)
+    ).renderPathTrace(output_file)

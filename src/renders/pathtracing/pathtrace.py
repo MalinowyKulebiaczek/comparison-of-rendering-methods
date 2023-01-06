@@ -20,6 +20,7 @@ See:
 https://en.wikipedia.org/wiki/Path_tracing
 """
 
+
 def hemisphere_mapping(point: np.array, normal: np.array) -> np.array:
     if np.dot(point, normal) < 0:
         return -point
@@ -39,12 +40,11 @@ def random_three_vector():
     theta = 2 * np.pi * u
     phi = np.arccos(2 * v - 1)
 
-    x = np.sin( theta) * np.cos( phi )
-    y = np.sin( theta) * np.sin( phi )
-    z = np.cos( theta )
+    x = np.sin(theta) * np.cos(phi)
+    y = np.sin(theta) * np.sin(phi)
+    z = np.cos(theta)
 
     return np.array([x, y, z])
-
 
 
 def path_trace(procedure: MainProcedure) -> Bitmap:
@@ -62,26 +62,24 @@ def path_trace(procedure: MainProcedure) -> Bitmap:
     pool = Pool(os.cpu_count())
     tasks = []
     rays = procedure.scene.camera.generate_initial_rays()
-    procedure.free_scene() 
+    procedure.free_scene()
+    np.random.shuffle(rays)
     batches = np.array_split(rays, os.cpu_count())
 
-    for batch in batches:
-        tasks.append(pool.apply_async(trace_ray_task, (batch, procedure)))
-
-    pool.close()
-    pool.join()
-
-    for task in tasks:
-        for ((x,y), color) in task.get():
-            bitmap[y, x] = color
+    with Pool(processes=os.cpu_count()) as pool:
+        tasks = [
+            pool.apply_async(trace_ray_task, (batch, procedure)) for batch in batches
+        ]
+        pool.close()
+        pool.join()
+        for task in tasks:
+            for ((x, y), color) in task.get():
+                bitmap[y, x] = color
 
     return bitmap
 
 
-def trace_ray_task(
-        batch,
-        procedure_template: MainProcedure
-):
+def trace_ray_task(batch, procedure_template: MainProcedure):
     """
     Task executed in Pool.
     """
@@ -109,10 +107,10 @@ def trace_ray_task(
 
 
 def trace_ray(
-        procedure: MainProcedure,
-        ray: Ray,
-        #sampler: RandomSampler, #Wydaje mi się 
-        depth: int = 0,
+    procedure: MainProcedure,
+    ray: Ray,
+    # sampler: RandomSampler, #Wydaje mi się
+    depth: int = 0,
 ) -> np.array:
     """
     Trace ray
@@ -126,9 +124,11 @@ def trace_ray(
         return background(procedure, ray)
 
     new_ray = Ray(
-         origin=hit.coords,
-         direction=hemisphere_mapping(random_three_vector(), hit.normal) #Tu mi się wydaje ze moze blad być
-       )
+        origin=hit.coords,
+        direction=hemisphere_mapping(
+            random_three_vector(), hit.normal
+        ),  # Tu mi się wydaje ze moze blad być
+    )
 
     probability = 1 / (2 * np.pi)
 
@@ -144,10 +144,10 @@ def trace_ray(
     """
     Na wikipedi jest inaczej z tym brdf ?
     """
-    
+
     brdf = (hit_material.diffusion * cos_theta) + (  # diffusion brdf
-            hit_material.reflectance    #reflectance = specular w .dae
-            * (np.dot(ray.direction, new_ray.direction) ** hit_material.shininess)
+        hit_material.reflectance  # reflectance = specular w .dae
+        * (np.dot(ray.direction, new_ray.direction) ** hit_material.shininess)
     )  # reflectance brdf
 
     incoming = trace_ray(procedure, new_ray, depth + 1)
@@ -157,8 +157,8 @@ def trace_ray(
 
 
 def background(
-        procedure: MainProcedure,
-        ray: Ray,
+    procedure: MainProcedure,
+    ray: Ray,
 ) -> np.array:
     """
     Gets environment map value for the ray
