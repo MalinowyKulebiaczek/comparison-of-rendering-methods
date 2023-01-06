@@ -11,7 +11,6 @@ from renders.collision import get_collision
 from renders.pathtracing.pathtrace import background
 from utilities.ray import Ray
 
-
 PROCESS_PROCEDURE = None
 
 
@@ -94,7 +93,7 @@ def color_at(hit, scene):
     hit_material = scene.get_material(hit.material_id)
     color = np.zeros(3)
     ambient = [0.1, 0.1, 0.1]  # hit_material.ambient jest zawsze 0, wiec zahardkodowalem 0.1
-    light_color = (1, 1, 1)
+    light_color = (1, 1, 1) # TODO normalizowac light.color po ludzku a nie uzywac zahardkodowanej wartosci
     # direction_from_hit_to_camera = normalize(scene.camera.origin - hit.coords)
     for light in scene.lights:
         direction_from_point_to_light = normalize(light.position - hit.coords)
@@ -102,7 +101,7 @@ def color_at(hit, scene):
         hit_between_object_and_light = get_collision(ray, scene)
         if hit_between_object_and_light is None:
             # if there is no object between the point and light then it means this light shines on object
-            color += np.multiply(ambient, normalize_color(light_color))
+            color += np.multiply(ambient, light_color)
 
             # diffuse
             direction_from_hit_to_light = normalize(light.position - hit.coords)
@@ -114,15 +113,4 @@ def color_at(hit, scene):
 
     return color
 
-def normalize_color(color: tuple):
-    min_val = min(color)
-    max_val = max(color)
-    return (normalize_value_to_255(color[0], min_val, max_val),
-            normalize_value_to_255(color[1], min_val, max_val),
-            normalize_value_to_255(color[2], min_val, max_val)
-            )
-
-def normalize_value_to_255(value, min, max):
-    if min==max: return 1
-    else: return (value - min) * (1 / max - min)
 
