@@ -184,7 +184,7 @@ def trace_ray(procedure, ray):
         if light_shining_on_hit is not None:
             hit_material = procedure.scene.get_material(hit.material_id)
             direction_from_point_to_camera = normalize(origin - hit.coords)
-            color = get_blinn_phong(hit_material, light_shining_on_hit, direction_from_hitpoint_to_light,
+            color = calculate_shading(hit_material, light_shining_on_hit, direction_from_hitpoint_to_light,
                                     direction_from_point_to_camera, hit.normal)
     return color
 
@@ -200,8 +200,8 @@ def get_light_that_shines_on_point(scene: Scene, point):
     return None, None
 
 
-def get_blinn_phong(hit_material, light, direction_from_point_to_light, direction_from_point_to_camera,
-                    normal_to_surface):
+def calculate_shading(hit_material, light, direction_from_point_to_light, direction_from_point_to_camera,
+                      normal_to_surface):
     illumination = np.zeros(3)
     # ambient
     illumination += hit_material.ambient * light.color  # tbh should probably be sth like light.ambient but lgith seems noty to have such field
@@ -221,7 +221,7 @@ def get_blinn_phong(hit_material, light, direction_from_point_to_light, directio
 
 
 if __name__ == '__main__':
-    file_dae = "scenes/spheres_color.dae"
+    file_dae = "scenes/spheres_color_working.dae"
     resolution = 200
     samples = 8
     max_depth = 3
