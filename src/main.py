@@ -6,7 +6,7 @@ if __name__ == '__main__':
     resolution = 200
     samples = 8
     max_depth = 3
-    environment_map="src/scenes/hdr_bg.jpg"
+    environment_map="src/scenes/skbx.jpg"
 
     scene = Scene.load(file_dae, 200)
     output_file = "out.png"
