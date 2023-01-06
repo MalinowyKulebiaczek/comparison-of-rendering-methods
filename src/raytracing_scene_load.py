@@ -142,21 +142,22 @@ def ray_tracing_render(procedure: MainProcedure, max_depth):
 
     procedure.free_scene()
 
-    batches = np.array_split(rays, 60)
+    batches = np.array_split(rays, os.cpu_count())
+    pool = Pool(os.cpu_count())
+    tasks = []
 
-    for batch in tqdm(batches):
-        pool = Pool(os.cpu_count())
-        tasks = {}
-        for (x, y), ray in batch:
-            tasks[(x, y)] = pool.apply_async(trace_ray_task, (ray, procedure))
-        pool.close()
-        pool.join()
-        for i, (x, y) in enumerate(tasks.keys()):
-            bitmap[y, x] = tasks[(x, y)].get()
+    for batch in batches:
+        tasks.append(pool.apply_async(trace_ray_task, (batch, procedure)))
+    
+    pool.close()
+    pool.join()
+    for task in tasks:
+        for ((x,y), color) in task.get():
+            bitmap[y, x] = color
             
     return bitmap
 
-def trace_ray_task(ray: Ray, procedure_template: MainProcedure):    
+def trace_ray_task(batch, procedure_template: MainProcedure):    
     global PROCESS_PROCEDURE
 
     if PROCESS_PROCEDURE is None:
@@ -166,14 +167,16 @@ def trace_ray_task(ray: Ray, procedure_template: MainProcedure):
         PROCESS_PROCEDURE.scene.load_objects()
         PROCESS_PROCEDURE.scene.load_materials()
         PROCESS_PROCEDURE.scene.load_lights()
-        PROCESS_PROCEDURE.scene.load_camera()
 
-    color = trace_ray(PROCESS_PROCEDURE, ray)
-    return np.clip(color, 0, 1)
+    colors = []
+
+    for (x, y), ray in tqdm(batch):
+        color = trace_ray(PROCESS_PROCEDURE, ray)
+        colors.append(((x, y), np.clip(color, 0, 255)))
+    return colors
 
 def trace_ray(procedure, ray):
-    camera = procedure.scene.camera
-    origin = camera.origin
+    origin = ray.origin
     color = np.zeros(3)
     hit = get_collision(ray, procedure.scene)
     if hit is None:
@@ -186,7 +189,7 @@ def trace_ray(procedure, ray):
             direction_from_point_to_camera = normalize(origin - hit.coords)
             color = calculate_shading(hit_material, light_shining_on_hit, direction_from_hitpoint_to_light,
                                     direction_from_point_to_camera, hit.normal)
-    return color
+    return (color * 255).astype("uint8")
 
 
 def get_light_that_shines_on_point(scene: Scene, point):
