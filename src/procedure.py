@@ -44,7 +44,7 @@ class MainProcedure:
     def free_scene(self):
         self.scene = None
 
-    def render(self, output_file) -> None:
+    def renderPathTrace(self, output_file) -> None:
         """
         Run path tracing render
         """

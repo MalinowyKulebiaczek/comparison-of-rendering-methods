@@ -2,6 +2,7 @@ import os
 from multiprocessing import Pool
 
 import numpy as np
+from tqdm import tqdm
 
 from procedure import MainProcedure
 from renders.collision import get_collision
@@ -59,26 +60,26 @@ def path_trace(procedure: MainProcedure) -> Bitmap:
     bitmap = Bitmap(*procedure.scene.camera.resolution)
 
     pool = Pool(os.cpu_count())
-    tasks = {}
+    tasks = []
     rays = procedure.scene.camera.generate_initial_rays()
-    procedure.free_scene()  # for 
-    
+    procedure.free_scene() 
+    batches = np.array_split(rays, os.cpu_count())
 
-    for (x, y), ray in rays:
-        tasks[(x, y)] = pool.apply_async(trace_ray_task, (ray, procedure))
+    for batch in batches:
+        tasks.append(pool.apply_async(trace_ray_task, (batch, procedure)))
 
     pool.close()
     pool.join()
 
-    for i, (x, y) in enumerate(tasks.keys()):
-        bitmap[y, x] = tasks[(x, y)].get()
-    
+    for task in tasks:
+        for ((x,y), color) in task.get():
+            bitmap[y, x] = color
 
     return bitmap
 
 
 def trace_ray_task(
-        ray: Ray,
+        batch,
         procedure_template: MainProcedure
 ):
     """
@@ -94,15 +95,17 @@ def trace_ray_task(
         PROCESS_PROCEDURE.scene.load_materials()
         PROCESS_PROCEDURE.scene.load_lights()
 
-    result = np.array([0.0, 0.0, 0.0])
-
+    colors = []
     samples = PROCESS_PROCEDURE.samples
 
-    for _ in range(samples):
-        result += trace_ray(PROCESS_PROCEDURE, ray)
+    for (x, y), ray in tqdm(batch):
+        result = np.array([0.0, 0.0, 0.0])
+        for _ in range(samples):
+            result += trace_ray(PROCESS_PROCEDURE, ray)
+        result = (result / samples * 255).astype("uint8")
+        colors.append(((x, y), result))
 
-    result = (result / samples * 255).astype("uint8")
-    return result
+    return colors
 
 
 def trace_ray(
