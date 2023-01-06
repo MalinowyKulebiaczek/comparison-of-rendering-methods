@@ -71,26 +71,11 @@ def trace_ray_task(batch, procedure_template: MainProcedure):
 
 
 def trace_ray(procedure, ray):
-    origin = ray.origin
-    color = np.zeros(3)
     hit = get_collision(ray, procedure.scene)
     if hit is None:
         color = background(procedure, ray)
     else:
-        (
-            light_shining_on_hit,
-            direction_from_hitpoint_to_light,
-        ) = get_light_that_shines_on_point(procedure.scene, hit.coords)
-        if light_shining_on_hit is not None:
-            hit_material = procedure.scene.get_material(hit.material_id)
-            direction_from_point_to_camera = normalize(origin - hit.coords)
-            color = calculate_shading(
-                hit_material,
-                light_shining_on_hit,
-                direction_from_hitpoint_to_light,
-                direction_from_point_to_camera,
-                hit.normal,
-            )
+        color = color_at(hit, procedure.scene)
     return (color * 255).astype("uint8")
 
 
@@ -105,61 +90,39 @@ def get_light_that_shines_on_point(scene: Scene, point):
     return None, None
 
 
-def calculate_shading(
-    hit_material,
-    light,
-    direction_from_point_to_light,
-    direction_from_point_to_camera,
-    normal_to_surface,
-):
-    illumination = np.zeros(3)
-    # ambient
-    illumination += (
-        hit_material.ambient * light.color
-    )  # tbh should probably be sth like light.ambient but lgith seems noty to have such field
-    # diffuse
-    illumination += hit_material.diffusion * np.dot(
-        direction_from_point_to_light, normal_to_surface
-    )
-    # specular
-    H = normalize(direction_from_point_to_light + direction_from_point_to_camera)
-    illumination += hit_material.specular * np.dot(normal_to_surface, H) ** (
-        hit_material.shininess / 4
-    )
+def color_at(hit, scene):
+    hit_material = scene.get_material(hit.material_id)
+    color = np.zeros(3)
+    ambient = [0.1, 0.1, 0.1]  # hit_material.ambient jest zawsze 0, wiec zahardkodowalem 0.1
+    light_color = (1, 1, 1)
+    # direction_from_hit_to_camera = normalize(scene.camera.origin - hit.coords)
+    for light in scene.lights:
+        direction_from_point_to_light = normalize(light.position - hit.coords)
+        ray = Ray(origin=hit.coords, direction=direction_from_point_to_light)
+        hit_between_object_and_light = get_collision(ray, scene)
+        if hit_between_object_and_light is None:
+            # if there is no object between the point and light then it means this light shines on object
+            color += np.multiply(ambient, normalize_color(light_color))
 
-    # TODO dorobic reflection
-    # color = np.zeros(3)
-    # reflection = 1
-    # color += reflection * illumination
-    # reflection *= hit_material.emmitance
+            # diffuse
+            direction_from_hit_to_light = normalize(light.position - hit.coords)
+            color += hit_material.diffusion * np.dot(direction_from_hit_to_light, hit.normal)
 
-    return illumination
+            # specular - cytujac klasyka 'something is no yes' w tym miejscu, wiec wywalilem
+            # H = normalize(direction_from_hit_to_light + direction_from_hit_to_camera)
+            # color += light.color * hit_material.reflectance * max(np.dot(hit.normal, H), 0) ** (hit_material.shininess / 4)
 
+    return color
 
-if __name__ == "__main__":
-    file_dae = "scenes/spheres_color_working.dae"
-    resolution = 200
-    samples = 8
-    max_depth = 3
-    environment_map = "scenes/env.jpg"
+def normalize_color(color: tuple):
+    min_val = min(color)
+    max_val = max(color)
+    return (normalize_value_to_255(color[0], min_val, max_val),
+            normalize_value_to_255(color[1], min_val, max_val),
+            normalize_value_to_255(color[2], min_val, max_val)
+            )
 
-    scene = Scene.load(file_dae, 200)
-    output_file = "out.png"
+def normalize_value_to_255(value, min, max):
+    if min==max: return 1
+    else: return (value - min) * (1 / max - min)
 
-    procedure = MainProcedure(
-        scene_file=file_dae,
-        resolution=resolution,
-        samples=samples,
-        max_depth=max_depth,
-        environment_map=environment_map,
-    )  # .render(output_file)
-
-    procedure.load_scene()
-    procedure.load_background()
-    procedure.scene.load_objects()
-    procedure.scene.load_materials()
-    procedure.scene.load_lights()
-    procedure.scene.load_camera()
-
-    MAX_DEPTH = 1
-    ray_tracing_render(procedure, MAX_DEPTH)

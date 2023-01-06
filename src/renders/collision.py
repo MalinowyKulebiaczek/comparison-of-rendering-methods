@@ -30,7 +30,12 @@ class Hit:
         TODO right now that just
         copies triangle normal
         """
-        self._normal = self.triangle.normals[0]
+        def normalize(vector):
+            return vector / np.linalg.norm(vector)
+
+        dir = np.cross(self.triangle.vertices[1] - self.triangle.vertices[0],
+                       self.triangle.vertices[2] - self.triangle.vertices[0])
+        self._normal = normalize(dir)
 
     def _calculate_coords(self):
         self._coords = self.ray.origin + self.ray.direction * self.distance
