@@ -2,7 +2,7 @@ from procedure import MainProcedure
 from scenecomponents.scene import Scene
 
 if __name__ == '__main__':
-    file_dae = "src/scenes/spheres.dae"
+    file_dae = "src/scenes/spheres_color_working.dae"
     resolution = 200
     samples = 8
     max_depth = 3
