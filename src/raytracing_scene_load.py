@@ -1,12 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
+import os
+from multiprocessing import Pool
+from utilities.bitmap import Bitmap
 
 from procedure import MainProcedure
 from scenecomponents.scene import Scene
-from src.renders.collision import get_collision
-from src.renders.pathtracing.pathtrace import background
-from src.utilities.ray import Ray
+from renders.collision import get_collision
+from renders.pathtracing.pathtrace import background
+from utilities.ray import Ray
+
+
+PROCESS_PROCEDURE = None
 
 
 # na razie zostawiam ten kod z tutoriala tak brzydko zakomentowany - posprzatam potem
@@ -121,37 +127,66 @@ objects = [
 # plt.imsave('image.png', image)
 
 def ray_tracing_render(procedure: MainProcedure, max_depth):
+    procedure.load_scene()
+    procedure.load_background()
+
+    # procedure.scene.load_objects()
+    # procedure.scene.load_materials()
+    # procedure.scene.load_lights()
+    procedure.scene.load_camera()
+
+    rays = procedure.scene.camera.generate_initial_rays()
+
+    bitmap = Bitmap(*procedure.scene.camera.resolution)
+    print(procedure.scene.camera.resolution)
+
+    procedure.free_scene()
+
+    batches = np.array_split(rays, 60)
+
+    for batch in tqdm(batches):
+        pool = Pool(os.cpu_count())
+        tasks = {}
+        for (x, y), ray in batch:
+            tasks[(x, y)] = pool.apply_async(trace_ray_task, (ray, procedure))
+        pool.close()
+        pool.join()
+        for i, (x, y) in enumerate(tasks.keys()):
+            bitmap[y, x] = tasks[(x, y)].get()
+            
+    return bitmap
+
+def trace_ray_task(ray: Ray, procedure_template: MainProcedure):    
+    global PROCESS_PROCEDURE
+
+    if PROCESS_PROCEDURE is None:
+        PROCESS_PROCEDURE = procedure_template
+        PROCESS_PROCEDURE.load_scene()
+        PROCESS_PROCEDURE.load_background()
+        PROCESS_PROCEDURE.scene.load_objects()
+        PROCESS_PROCEDURE.scene.load_materials()
+        PROCESS_PROCEDURE.scene.load_lights()
+        PROCESS_PROCEDURE.scene.load_camera()
+
+    color = trace_ray(PROCESS_PROCEDURE, ray)
+    return np.clip(color, 0, 1)
+
+def trace_ray(procedure, ray):
     camera = procedure.scene.camera
-    width = camera.image_width
-    height = camera.image_height
-
-    image = np.zeros((height, width, 3))
-
-    for i in tqdm(np.arange(height)):
-        for j in np.arange(width):
-            pixel = np.array([camera.calculate_px(j), camera.calculate_py(i), 0])
-            # TODO sprawdzic czy tu na pewno 0 na koncu - czy to nie jest jakies zalozenie z tego tutoriala, ale raczej powinno tak zostac
-
-            origin = camera.origin
-            direction = normalize(pixel - origin)
-
-            color = np.zeros(3)
-            ray = Ray(origin=origin, direction=direction)
-
-            hit = get_collision(ray, procedure.scene)
-            if hit is None:
-                color = background(procedure, ray)
-            else:
-                light_shining_on_hit, direction_from_hitpoint_to_light = get_light_that_shines_on_point(procedure.scene,
-                                                                                                        hit.coords)
-                if light_shining_on_hit is not None:
-                    hit_material = procedure.scene.get_material(hit.material_id)
-                    direction_from_point_to_camera = normalize(origin - hit.coords)
-                    color = get_blinn_phong(hit_material, light_shining_on_hit, direction_from_hitpoint_to_light,
-                                            direction_from_point_to_camera, hit.normal)
-
-            image[i, j] = np.clip(color, 0, 1)
-    plt.imsave('image3_colors.png', image)
+    origin = camera.origin
+    color = np.zeros(3)
+    hit = get_collision(ray, procedure.scene)
+    if hit is None:
+        color = background(procedure, ray)
+    else:
+        light_shining_on_hit, direction_from_hitpoint_to_light = get_light_that_shines_on_point(procedure.scene,
+                                                                                                hit.coords)
+        if light_shining_on_hit is not None:
+            hit_material = procedure.scene.get_material(hit.material_id)
+            direction_from_point_to_camera = normalize(origin - hit.coords)
+            color = get_blinn_phong(hit_material, light_shining_on_hit, direction_from_hitpoint_to_light,
+                                    direction_from_point_to_camera, hit.normal)
+    return color
 
 
 def get_light_that_shines_on_point(scene: Scene, point):

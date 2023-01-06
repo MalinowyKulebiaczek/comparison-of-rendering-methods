@@ -2,7 +2,7 @@ from procedure import MainProcedure
 from scenecomponents.scene import Scene
 
 if __name__ == '__main__':
-    file_dae = "src/scenes/2lights_wall.dae"
+    file_dae = "src/scenes/spheres.dae"
     resolution = 200
     samples = 8
     max_depth = 3
@@ -17,5 +17,5 @@ if __name__ == '__main__':
         samples=samples,
         max_depth=max_depth,
         environment_map=environment_map
-    ).render(output_file)
+    ).renderRayTrace(output_file)
 

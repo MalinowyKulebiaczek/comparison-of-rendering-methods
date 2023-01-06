@@ -56,5 +56,17 @@ class MainProcedure:
         image.show()
         image.save(output_file)
 
+    def renderRayTrace(self, output_file) -> None:
+        """
+        Run ray tracing render
+        """
+        from raytracing_scene_load import ray_tracing_render
+
+        print("Started rendering. Please wait...")
+        image = ray_tracing_render(self, 1)
+        print("Done!")
+        image.show()
+        image.save(output_file)
+        
     def load_background(self):
         self.background = Background(self.background_color, self.environment_map)
