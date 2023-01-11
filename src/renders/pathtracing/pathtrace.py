@@ -2,13 +2,23 @@ import os
 from multiprocessing import Pool
 
 import numpy as np
+from tqdm import tqdm
 
-from src.procedure import MainProcedure
-from src.renders.collision import get_collision
-from src.utilities.bitmap import Bitmap
-from src.utilities.ray import Ray
+from procedure import MainProcedure
+from renders.collision import get_collision
+from utilities.bitmap import Bitmap
+from utilities.ray import Ray
+
+from renders.sampler import RandomSampler
 
 PROCESS_PROCEDURE = None
+
+"""
+Comment by: Damian Łysomirski
+I don't think this mapping is present, it is available for various samplers and we don't use them.
+See:
+https://en.wikipedia.org/wiki/Path_tracing
+"""
 
 
 def hemisphere_mapping(point: np.array, normal: np.array) -> np.array:
@@ -16,6 +26,25 @@ def hemisphere_mapping(point: np.array, normal: np.array) -> np.array:
         return -point
     else:
         return point
+
+
+def random_three_vector():
+    """
+    Generates a random 3D unit vector (direction) with a uniform spherical distribution
+    Algo from http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution
+    :return:
+    """
+    u = np.random.random()
+    v = np.random.random()
+
+    theta = 2 * np.pi * u
+    phi = np.arccos(2 * v - 1)
+
+    x = np.sin(theta) * np.cos(phi)
+    y = np.sin(theta) * np.sin(phi)
+    z = np.cos(theta)
+
+    return np.array([x, y, z])
 
 
 def path_trace(procedure: MainProcedure) -> Bitmap:
@@ -31,26 +60,26 @@ def path_trace(procedure: MainProcedure) -> Bitmap:
     bitmap = Bitmap(*procedure.scene.camera.resolution)
 
     pool = Pool(os.cpu_count())
-    tasks = {}
+    tasks = []
     rays = procedure.scene.camera.generate_initial_rays()
-    procedure.free_scene()  # for pickle
+    procedure.free_scene()
+    np.random.shuffle(rays)
+    batches = np.array_split(rays, os.cpu_count())
 
-    for (x, y), ray in rays:
-        tasks[(x, y)] = pool.apply_async(trace_ray_task, (ray, procedure))
-
-    pool.close()
-    pool.join()
-
-    for i, (x, y) in enumerate(tasks.keys()):
-        bitmap[y, x] = tasks[(x, y)].get()
+    with Pool(processes=os.cpu_count()) as pool:
+        tasks = [
+            pool.apply_async(trace_ray_task, (batch, procedure)) for batch in batches
+        ]
+        pool.close()
+        pool.join()
+        for task in tasks:
+            for ((x, y), color) in task.get():
+                bitmap[y, x] = color
 
     return bitmap
 
 
-def trace_ray_task(
-        ray: Ray,
-        procedure_template: MainProcedure
-):
+def trace_ray_task(batch, procedure_template: MainProcedure):
     """
     Task executed in Pool.
     """
@@ -64,22 +93,24 @@ def trace_ray_task(
         PROCESS_PROCEDURE.scene.load_materials()
         PROCESS_PROCEDURE.scene.load_lights()
 
-    result = np.array([0.0, 0.0, 0.0])
-
+    colors = []
     samples = PROCESS_PROCEDURE.samples
 
-    for _ in range(samples):
-        result += trace_ray(PROCESS_PROCEDURE, ray)
+    for (x, y), ray in tqdm(batch):
+        result = np.array([0.0, 0.0, 0.0])
+        for _ in range(samples):
+            result += trace_ray(PROCESS_PROCEDURE, ray)
+        result = (result / samples * 255).astype("uint8")
+        colors.append(((x, y), result))
 
-    result = (result / samples * 255).astype("uint8")
-    return result
+    return colors
 
 
 def trace_ray(
-        procedure: MainProcedure,
-        ray: Ray,
-        # sampler: Sampler,
-        depth: int = 0,
+    procedure: MainProcedure,
+    ray: Ray,
+    # sampler: RandomSampler, #Wydaje mi się
+    depth: int = 0,
 ) -> np.array:
     """
     Trace ray
@@ -92,15 +123,12 @@ def trace_ray(
     if hit is None:
         return background(procedure, ray)
 
-    # new_ray = Ray(
-    #     origin=hit.coords,
-    #     direction=hemisphere_mapping(next(sampler), hit.normal),
-    # )
-
     new_ray = Ray(
         origin=hit.coords,
-        direction=ray.direction - 2 * np.dot(ray.direction, hit.normal) * hit.normal,
-    )  # wziete stad https://github.com/arocks/puray/blob/episode06/engine.py - potencjalne miejsce, w ktorym jest blad
+        direction=hemisphere_mapping(
+            random_three_vector(), hit.normal
+        ),  # Tu mi się wydaje ze moze blad być
+    )
 
     probability = 1 / (2 * np.pi)
 
@@ -108,11 +136,18 @@ def trace_ray(
 
     emmitance = hit_material.emmitance
 
+    if emmitance[0] > 0:
+        return emmitance
+
     cos_theta = np.dot(new_ray.direction, hit.normal)
 
+    """
+    Na wikipedi jest inaczej z tym brdf ?
+    """
+
     brdf = (hit_material.diffusion * cos_theta) + (  # diffusion brdf
-            hit_material.reflectance
-            * (np.dot(ray.direction, new_ray.direction) ** hit_material.shiness)
+        hit_material.reflectance  # reflectance = specular w .dae
+        * (np.dot(ray.direction, new_ray.direction) ** hit_material.shininess)
     )  # reflectance brdf
 
     incoming = trace_ray(procedure, new_ray, depth + 1)
@@ -122,8 +157,8 @@ def trace_ray(
 
 
 def background(
-        procedure: MainProcedure,
-        ray: Ray,
+    procedure: MainProcedure,
+    ray: Ray,
 ) -> np.array:
     """
     Gets environment map value for the ray

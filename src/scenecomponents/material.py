@@ -27,5 +27,13 @@ class Material:
         return self._material.effect.index_of_refraction
 
     @property
-    def shiness(self):
+    def shininess(self):
         return self._material.effect.shininess or 0.0
+
+    @property
+    def ambient(self):
+        return np.array((self._material.effect.ambient or ZEROES)[:3])
+
+    @property
+    def specular(self):
+        return np.array((self._material.effect.specular or ZEROES)[:3])
