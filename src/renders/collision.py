@@ -5,6 +5,7 @@ import numpy as np
 from scenecomponents.scene import Scene
 from utilities.ray import Ray
 
+np.seterr(divide = 'ignore') 
 
 class Hit:
     def __init__(

@@ -20,7 +20,6 @@ See:
 https://en.wikipedia.org/wiki/Path_tracing
 """
 
-
 def hemisphere_mapping(point: np.array, normal: np.array) -> np.array:
     if np.dot(point, normal) < 0:
         return -point
@@ -45,7 +44,6 @@ def random_three_vector():
     z = np.cos(theta)
 
     return np.array([x, y, z])
-
 
 def path_trace(procedure: MainProcedure) -> Bitmap:
     """
@@ -105,16 +103,17 @@ def trace_ray_task(batch, procedure_template: MainProcedure):
 
     return colors
 
-
 def trace_ray(
     procedure: MainProcedure,
     ray: Ray,
-    # sampler: RandomSampler, #Wydaje mi się
     depth: int = 0,
 ) -> np.array:
+
     """
-    Trace ray
+    Path tracing algorithm like in:
+    https://en.wikipedia.org/wiki/Path_tracing
     """
+
     if depth > procedure.max_depth:
         return background(procedure, ray)
 
@@ -125,12 +124,10 @@ def trace_ray(
 
     new_ray = Ray(
         origin=hit.coords,
-        direction=hemisphere_mapping(
-            random_three_vector(), hit.normal
-        ),  # Tu mi się wydaje ze moze blad być
-    )
-
-    probability = 1 / (2 * np.pi)
+        direction=hemisphere_mapping(random_three_vector(), hit.normal))
+    
+    #In some theory they use probability, but i think it's unused in our case
+    #probability = 1 / (2 * np.pi)
 
     hit_material = procedure.scene.get_material(hit.material_id)
 
@@ -139,21 +136,26 @@ def trace_ray(
     if emmitance[0] > 0:
         return emmitance
 
+
+    #Diffusion brdf
+    #Like in theory: https://www.youtube.com/watch?v=PBTO4Rmabpw
+    # https://www.scratchapixel.com/lessons/3d-basic-rendering/phong-shader-BRDF/phong-illumination-models-brdf.html
     cos_theta = np.dot(new_ray.direction, hit.normal)
+    diffusion_brdf = hit_material.diffusion * np.max(cos_theta, 0)
 
-    """
-    Na wikipedi jest inaczej z tym brdf ?
-    """
+    #Spekular brdf
+    # We dont use this
+    # specular_brdf = hit_material.specular * (np.dot(ray.direction, new_ray.direction) 
+    #                 ** hit_material.shiness)
 
-    brdf = (hit_material.diffusion * cos_theta) + (  # diffusion brdf
-        hit_material.reflectance  # reflectance = specular w .dae
-        * (np.dot(ray.direction, new_ray.direction) ** hit_material.shininess)
-    )  # reflectance brdf
+    brdf = diffusion_brdf # + specular_brdf
 
     incoming = trace_ray(procedure, new_ray, depth + 1)
 
-    # RENDER EQUATION
-    return emmitance + (incoming * brdf * cos_theta / probability)
+    #+RENDER EQUATION
+    return emmitance + (incoming * brdf)
+
+    #return emmitance + (incoming * brdf)
 
 
 def background(
