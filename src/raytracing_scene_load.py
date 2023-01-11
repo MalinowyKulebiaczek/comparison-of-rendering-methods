@@ -93,15 +93,15 @@ def color_at(hit, scene):
     )  # TODO normalizowac light.color po ludzku a nie uzywac zahardkodowanej wartosci
     # direction_from_hit_to_camera = normalize(scene.camera.origin - hit.coords)
     for light in scene.lights:
-        direction_from_point_to_light = normalize(light.position - hit.coords)
-        ray = Ray(origin=hit.coords, direction=direction_from_point_to_light)
+        direction_from_hit_to_light = normalize(light.position - hit.coords)
+        ray = Ray(origin=hit.coords, direction=direction_from_hit_to_light)
         hit_between_object_and_light = get_collision(ray, scene)
-        if hit_between_object_and_light is None:
+        if hit_between_object_and_light is None or \
+                calculate_distance(hit.coords, hit_between_object_and_light.coords) >= calculate_distance(hit.coords, light.position):
             # if there is no object between the point and light then it means this light shines on object
             color += np.multiply(ambient, light_color)
 
             # diffuse
-            direction_from_hit_to_light = normalize(light.position - hit.coords)
             color += hit_material.diffusion * np.dot(
                 direction_from_hit_to_light, hit.normal
             )
@@ -111,3 +111,7 @@ def color_at(hit, scene):
             # color += light.color * hit_material.reflectance * max(np.dot(hit.normal, H), 0) ** (hit_material.shininess / 4)
 
     return color
+
+def calculate_distance(p1, p2):
+    squared_dist = np.sum((p1-p2)**2, axis=0)
+    return np.sqrt(squared_dist)
