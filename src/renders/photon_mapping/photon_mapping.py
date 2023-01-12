@@ -34,12 +34,15 @@ def generate_photon_map(light_source, scene, num_photons):
     # Initialize the photon map
     photon_map = []
     print("GENERATING PHOTON MAP")
-
+    i=0
     # Generate photons from the light source
-    for i in tqdm(range(num_photons)):
+    #for i in tqdm(range(num_photons)):
+    while len(photon_map) < num_photons:
         # Generate a random direction for the photon
         direction = generate_random_direction()
-        
+        if i % 10000 == 0:
+            print("Shot", i, "rays, got", len(photon_map), "photon hits so far")
+        i += 1
         # Create a ray for the photon
         ray = Ray(light_source.position, direction)
         
@@ -53,6 +56,7 @@ def generate_photon_map(light_source, scene, num_photons):
             photon_map.append(Photon(hit.coords, hit.normal, hit_material.diffusion, -1*ray.direction))
             
             # Generate new photons with Russian roulette
+            # Assuming here reflectance is the albedo of the material
             if np.random.random() < hit_material.reflectance:
                 new_direction = generate_random_direction()
                 new_ray = Ray(hit.coords, new_direction)
