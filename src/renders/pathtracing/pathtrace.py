@@ -167,7 +167,7 @@ def trace_ray(
                 calculate_distance(hit.coords, hit_between_object_and_light.coords) >= calculate_distance(hit.coords, light.position):
             # if there is no collision, the point is not in shadow
             #direct_lighting += (light.intensity / (light_distance ** 2)) * np.maximum(np.dot(light_direction, hit.normal), 0) * hit_material.diffusion
-            direct_lighting +=  hit_material.diffusion *  np.dot(light_direction, hit.normal)
+            direct_lighting +=  hit_material.diffusion *  np.dot(light_direction, hit.normal) * light_attenuation(light, hit)
 
     # RENDER EQUATION
     return (incoming * brdf * cos_theta / probability) + direct_lighting
@@ -186,3 +186,7 @@ def background(
 def calculate_distance(p1, p2):
     squared_dist = np.sum((p1-p2)**2, axis=0)
     return np.sqrt(squared_dist)
+
+def light_attenuation(light, hit):
+    #constant after / is for scaling the light's brightness
+    return (np.average(light.color) / (500 * np.linalg.norm(light.position - hit.coords) ** 2 + 1000))
