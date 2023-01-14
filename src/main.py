@@ -2,10 +2,10 @@ from procedure import MainProcedure
 from scenecomponents.scene import Scene
 
 if __name__ == "__main__":
-    file_dae = "src/scenes/sphere_and_cubes_closer_light.dae"
+    file_dae = "src/scenes/path_tracing_scene.dae"
     resolution = 200
-    samples = 8
-    max_depth = 3
+    samples = 4
+    max_depth = 2
     environment_map = "src/scenes/skbx.jpg"
     n_photons = 1000
 
@@ -17,6 +17,6 @@ if __name__ == "__main__":
         samples=samples,
         max_depth=max_depth,
         environment_map=environment_map,
-    ).renderPhotonMap(output_file, n_photons)
+    #).renderPhotonMap(output_file, n_photons)
         #).renderRayTrace(output_file)
-    # ).renderPathTrace(output_file)
+     ).renderPathTrace(output_file)
