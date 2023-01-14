@@ -167,7 +167,7 @@ def trace_ray(
                 calculate_distance(hit.coords, hit_between_object_and_light.coords) >= calculate_distance(hit.coords, light.position):
             # if there is no collision, the point is not in shadow
             #direct_lighting += (light.intensity / (light_distance ** 2)) * np.maximum(np.dot(light_direction, hit.normal), 0) * hit_material.diffusion
-            direct_lighting += (1 / (light_distance ** 2)) * np.maximum(np.dot(light_direction, hit.normal), 0) * hit_material.diffusion
+            direct_lighting +=  hit_material.diffusion *  np.dot(light_direction, hit.normal)
 
     # RENDER EQUATION
     return (incoming * brdf * cos_theta / probability) + direct_lighting

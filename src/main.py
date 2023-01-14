@@ -17,6 +17,6 @@ if __name__ == "__main__":
         samples=samples,
         max_depth=max_depth,
         environment_map=environment_map,
-    ).renderPhotonMap(output_file, n_photons)
+    #).renderPhotonMap(output_file, n_photons)
     #    ).renderRayTrace(output_file)
-     #).renderPathTrace(output_file)
+     ).renderPathTrace(output_file)
