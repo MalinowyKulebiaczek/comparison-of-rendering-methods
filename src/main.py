@@ -7,7 +7,7 @@ if __name__ == "__main__":
     samples = 4
     max_depth = 2
     environment_map = "src/scenes/skbx.jpg"
-    n_photons = 1000
+    n_photons = 50000
 
     output_file = "out.png"
 
@@ -17,6 +17,6 @@ if __name__ == "__main__":
         samples=samples,
         max_depth=max_depth,
         environment_map=environment_map,
-    #).renderPhotonMap(output_file, n_photons)
-        #).renderRayTrace(output_file)
-     ).renderPathTrace(output_file)
+    ).renderPhotonMap(output_file, n_photons)
+    #    ).renderRayTrace(output_file)
+     #).renderPathTrace(output_file)

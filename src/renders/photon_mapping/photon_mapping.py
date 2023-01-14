@@ -62,14 +62,15 @@ def generate_photon_map(light_source, scene, num_photons):
                 new_ray = Ray(hit.coords, new_direction)
                 hit = get_collision(new_ray, scene)
                 if hit:
+                    absorption_factor = hit_material.reflectance
                     hit_material = scene.get_material(hit.material_id)
-                    photon_map.append(Photon(hit.coords, hit.normal, hit_material.diffusion, -1*ray.direction))
+                    photon_map.append(Photon(hit.coords, hit.normal, hit_material.diffusion * absorption_factor, -1*ray.direction))
             
     # Return the generated photon map
     return np.array(photon_map)
 
 
-def search_photons(position, photon_map, photon_tree, num_photons = 10):
+def search_photons(position, photon_map, photon_tree, num_photons = 5):
     #Find the k nearest photons to the hit point
     _, indices = photon_tree.query(position, k=num_photons)
     return [photon_map[i] for i in indices]
