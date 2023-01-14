@@ -68,14 +68,14 @@ class MainProcedure:
         image.show()
         image.save(output_file)
 
-    def renderPhotonMap(self, output_file, n_photons) -> None:
+    def renderPhotonMap(self, output_file, n_photons, max_depth) -> None:
         """
         Run photon mapping render
         """
         from renders.photon_mapping.photon_mapping import render_photon_mapping
 
         print("Started rendering. Please wait...")
-        image = render_photon_mapping(self, n_photons)
+        image = render_photon_mapping(self, n_photons, max_depth)
         print("Done!")
         image.show()
         image.save(output_file)

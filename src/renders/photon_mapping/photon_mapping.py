@@ -30,7 +30,7 @@ def generate_random_direction():
     return coords
 
 
-def generate_photon_map(light_source, scene, num_photons):
+def generate_photon_map(light_source, scene, num_photons, max_depth):
     # Initialize the photon map
     photon_map = []
     print("GENERATING PHOTON MAP")
@@ -57,7 +57,9 @@ def generate_photon_map(light_source, scene, num_photons):
             
             # Generate new photons with Russian roulette
             # Assuming here reflectance is the albedo of the material
-            if np.random.random() < hit_material.reflectance:
+            j = 0
+            while np.random.random() < hit_material.reflectance and j < max_depth:
+                j += 1
                 new_direction = generate_random_direction()
                 new_ray = Ray(hit.coords, new_direction)
                 hit = get_collision(new_ray, scene)
@@ -65,9 +67,11 @@ def generate_photon_map(light_source, scene, num_photons):
                     absorption_factor = hit_material.reflectance
                     hit_material = scene.get_material(hit.material_id)
                     photon_map.append(Photon(hit.coords, hit.normal, hit_material.diffusion * absorption_factor, -1*ray.direction))
+                else:
+                    break
             
     # Return the generated photon map
-    return np.array(photon_map)
+    return photon_map
 
 
 def search_photons(position, photon_map, photon_tree, num_photons = 5):
@@ -75,7 +79,7 @@ def search_photons(position, photon_map, photon_tree, num_photons = 5):
     _, indices = photon_tree.query(position, k=num_photons)
     return [photon_map[i] for i in indices]
 
-def render_photon_mapping(procedure: MainProcedure, n_photons) -> Bitmap:
+def render_photon_mapping(procedure: MainProcedure, n_photons, max_depth) -> Bitmap:
     """
     Main procedure:
 
@@ -93,15 +97,11 @@ def render_photon_mapping(procedure: MainProcedure, n_photons) -> Bitmap:
     tasks = []
     rays = procedure.scene.camera.generate_initial_rays()
     #assuming 1 light for now
-    photon_map = np.array([])
+    photon_map = []
     photon_tree = None
     for light in procedure.scene.lights:
-        photon_map = generate_photon_map(light, procedure.scene, n_photons)
+        photon_map.extend(generate_photon_map(light, procedure.scene, n_photons, max_depth))
         positions = np.array([p.position for p in photon_map])
-        print(positions.size)
-        if(positions.size == 0):
-            print("PHOTONS DID NOT HIT ANYTHING - RENDER FAILURE")
-            return bitmap
         photon_tree = KDTree(positions)
     procedure.free_scene()
     np.random.shuffle(rays)
@@ -167,4 +167,4 @@ def trace_ray(
         #Calculate the final color by adding the contribution of the current photon to the color
         color += diffuse_reflection * photon.color * hit_material.diffusion #+ specular_reflection * photon.color * hit.material.specular
 
-    return color
+    return color / len(closest_photons)
