@@ -136,7 +136,7 @@ def trace_ray(
 
     emmitance = hit_material.emmitance
 
-    #if emmitance[0] > 0:
+    # if emmitance[0] > 0:
     #    return emmitance
 
     cos_theta = np.dot(new_ray.direction, hit.normal)
@@ -145,29 +145,34 @@ def trace_ray(
     Na wikipedi jest inaczej z tym brdf ?
     """
 
-    #brdf = (hit_material.diffusion * cos_theta) + (  # diffusion brdf
+    # brdf = (hit_material.diffusion * cos_theta) + (  # diffusion brdf
     #    hit_material.reflectance  # reflectance = specular w .dae
     #    * (np.dot(ray.direction, new_ray.direction) ** hit_material.shininess)
-    #)  # reflectance brdf
+    # )  # reflectance brdf
     brdf = hit_material.reflectance / np.pi
-    #brdf = hit_material.diffusion * np.max(cos_theta, 0)
+    # brdf = hit_material.diffusion * np.max(cos_theta, 0)
 
     incoming = trace_ray(procedure, new_ray, depth + 1)
 
-    direct_lighting = np.zeros(3) # initialize empty direct lighting value
+    direct_lighting = np.zeros(3)  # initialize empty direct lighting value
     for light in procedure.scene.lights:
         # calculate the direct lighting contribution from each light source
         light_direction = light.position - hit.coords
         light_distance = np.linalg.norm(light_direction)
         light_direction = light_direction / light_distance
-        
+
         shadow_ray = Ray(origin=hit.coords, direction=light_direction)
         hit_between_object_and_light = get_collision(shadow_ray, procedure.scene)
-        if hit_between_object_and_light is None or \
-                calculate_distance(hit.coords, hit_between_object_and_light.coords) >= calculate_distance(hit.coords, light.position):
+        if hit_between_object_and_light is None or calculate_distance(
+            hit.coords, hit_between_object_and_light.coords
+        ) >= calculate_distance(hit.coords, light.position):
             # if there is no collision, the point is not in shadow
-            #direct_lighting += (light.intensity / (light_distance ** 2)) * np.maximum(np.dot(light_direction, hit.normal), 0) * hit_material.diffusion
-            direct_lighting +=  hit_material.diffusion *  np.dot(light_direction, hit.normal) * light_attenuation(light, hit)
+            # direct_lighting += (light.intensity / (light_distance ** 2)) * np.maximum(np.dot(light_direction, hit.normal), 0) * hit_material.diffusion
+            direct_lighting += (
+                hit_material.diffusion
+                * np.dot(light_direction, hit.normal)
+                * light_attenuation(light, hit)
+            )
 
     # RENDER EQUATION
     return (incoming * brdf * cos_theta / probability) + direct_lighting
@@ -183,10 +188,14 @@ def background(
     """
     return procedure.background(ray)
 
+
 def calculate_distance(p1, p2):
-    squared_dist = np.sum((p1-p2)**2, axis=0)
+    squared_dist = np.sum((p1 - p2) ** 2, axis=0)
     return np.sqrt(squared_dist)
 
+
 def light_attenuation(light, hit):
-    #constant after / is for scaling the light's brightness
-    return (np.average(light.color) / (500 * np.linalg.norm(light.position - hit.coords) ** 2 + 1000))
+    # constant after / is for scaling the light's brightness
+    return np.average(light.color) / (
+        500 * np.linalg.norm(light.position - hit.coords) ** 2 + 1000
+    )
