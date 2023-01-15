@@ -9,26 +9,23 @@ class MainProcedure:
     input resources parsing and
     execution of path tracing
     algorithm.
-
-    Created object stores all
-    local resources:
-        - scene
-        - sampler object
-        - environment map
-        - camera information
     """
 
     def __init__(
-            self,
-            scene_file: str,
-            resolution: int,
-            samples: int,
-            max_depth: int,
-            environment_map: str,
+        self,
+        method_name: str,
+        scene_file: str,
+        resolution: int,
+        samples: int,
+        max_depth: int,
+        environment_map: str,
+        n_photons: int,
+        output_file: str,
     ):
         """
         Load configuration
         """
+        self.method_name = method_name
         self.scene_file = scene_file
         self.resolution = resolution
         self.background_color = None
@@ -37,6 +34,8 @@ class MainProcedure:
         self.background = None
         self.samples = samples
         self.max_depth = max_depth
+        self.n_photons = n_photons
+        self.output_file = output_file
 
     def load_scene(self):
         self.scene = Scene.load(self.scene_file, self.resolution)
@@ -44,7 +43,7 @@ class MainProcedure:
     def free_scene(self):
         self.scene = None
 
-    def renderPathTrace(self, output_file) -> None:
+    def renderPathTrace(self) -> None:
         """
         Run path tracing render
         """
@@ -54,31 +53,43 @@ class MainProcedure:
         image = path_trace(self)
         print("Done!")
         image.show()
-        image.save(output_file)
+        image.save(self.output_file)
 
-    def renderRayTrace(self, output_file) -> None:
+    def renderRayTrace(self) -> None:
         """
         Run ray tracing render
         """
-        from raytracing_scene_load import ray_tracing_render
+        from renders.raytracing.raytracing_scene_load import ray_tracing_render
 
         print("Started rendering. Please wait...")
-        image = ray_tracing_render(self, 1)
+        image = ray_tracing_render(self, self.max_depth)
         print("Done!")
         image.show()
-        image.save(output_file)
+        image.save(self.output_file)
 
-    def renderPhotonMap(self, output_file, n_photons, max_depth) -> None:
+    def renderPhotonMap(self) -> None:
         """
         Run photon mapping render
         """
         from renders.photon_mapping.photon_mapping import render_photon_mapping
 
         print("Started rendering. Please wait...")
-        image = render_photon_mapping(self, n_photons, max_depth)
+        image = render_photon_mapping(self, self.n_photons, self.max_depth)
         print("Done!")
         image.show()
-        image.save(output_file)
-        
+        image.save(self.output_file)
+
     def load_background(self):
         self.background = Background(self.background_color, self.environment_map)
+
+    def render(self):
+        if self.method_name == "raytracing":
+            self.renderRayTrace()
+        elif self.method_name == "pathtracing":
+            self.renderPathTrace()
+        elif self.method_name == "photon_mapping":
+            self.renderPhotonMap()
+        else:
+            raise ValueError(
+                f"Method name {self.method_name} is not supported. Expected method names: raytracing, pathtracing, photon_mapping."
+            )

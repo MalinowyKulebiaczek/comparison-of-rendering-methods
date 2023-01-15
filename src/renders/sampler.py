@@ -1,6 +1,7 @@
 from abc import ABC
 import numpy as np
 
+
 class Sampler(ABC):
     def __init__(self, n=1):
         self._index = 0
@@ -34,6 +35,7 @@ class Sampler(ABC):
         i = self._index
         self._index += 1
         return self._data[i, :]
+
 
 class RandomSampler(Sampler):
     def __init__(self, n=1):

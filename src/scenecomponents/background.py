@@ -27,7 +27,9 @@ class Background:
         cube_width = self.environment_map.shape[1] / 4
 
         # Determine which face of the cube the ray is pointing towards
-        if abs(direction[0]) >= abs(direction[1]) and abs(direction[0]) >= abs(direction[2]):
+        if abs(direction[0]) >= abs(direction[1]) and abs(direction[0]) >= abs(
+            direction[2]
+        ):
             # Ray is pointing towards the left or right face of the cube
             offset_y = cube_width
             u = direction[2] / abs(direction[0])
@@ -39,7 +41,9 @@ class Background:
                 # Ray is pointing towards the left face of the cube
                 offset_x = cube_width * 2
                 u *= -1
-        elif abs(direction[1]) >= abs(direction[0]) and abs(direction[1]) >= abs(direction[2]):
+        elif abs(direction[1]) >= abs(direction[0]) and abs(direction[1]) >= abs(
+            direction[2]
+        ):
             # Ray is pointing towards the top or bottom face of the cube
             offset_x = cube_width
             u = -direction[0] / abs(direction[1])
@@ -49,7 +53,7 @@ class Background:
                 offset_y = 0
             else:
                 # Ray is pointing towards the bottom face of the cube
-                offset_y = 2*cube_width
+                offset_y = 2 * cube_width
         else:
             # Ray is pointing towards the front or back face of the cube
             offset_y = cube_width

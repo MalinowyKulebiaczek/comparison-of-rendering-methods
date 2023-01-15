@@ -92,15 +92,18 @@ def color_at(hit, scene):
         direction_from_hit_to_light = normalize(light.position - hit.coords)
         ray = Ray(origin=hit.coords, direction=direction_from_hit_to_light)
         hit_between_object_and_light = get_collision(ray, scene)
-        if hit_between_object_and_light is None or \
-                calculate_distance(hit.coords, hit_between_object_and_light.coords) >= calculate_distance(hit.coords, light.position):
+        if hit_between_object_and_light is None or calculate_distance(
+            hit.coords, hit_between_object_and_light.coords
+        ) >= calculate_distance(hit.coords, light.position):
             # if there is no object between the point and light then it means this light shines on object
-            #color += np.multiply(ambient, light_color/1000)
+            # color += np.multiply(ambient, light_color/1000)
 
             # diffuse
-            color += hit_material.diffusion * np.dot(
-                direction_from_hit_to_light, hit.normal
-            ) * light_attenuation(light, hit)
+            color += (
+                hit_material.diffusion
+                * np.dot(direction_from_hit_to_light, hit.normal)
+                * light_attenuation(light, hit)
+            )
 
             # specular - cytujac klasyka 'something is no yes' w tym miejscu, wiec wywalilem
             # H = normalize(direction_from_hit_to_light + direction_from_hit_to_camera)
@@ -108,10 +111,14 @@ def color_at(hit, scene):
 
     return color
 
+
 def light_attenuation(light, hit):
-    #constant after / is for scaling the light's brightness
-    return (np.average(light.color) / (500 * np.linalg.norm(light.position - hit.coords) ** 2 + 1000))
+    # constant after / is for scaling the light's brightness
+    return np.average(light.color) / (
+        500 * np.linalg.norm(light.position - hit.coords) ** 2 + 1000
+    )
+
 
 def calculate_distance(p1, p2):
-    squared_dist = np.sum((p1-p2)**2, axis=0)
+    squared_dist = np.sum((p1 - p2) ** 2, axis=0)
     return np.sqrt(squared_dist)
