@@ -8,13 +8,13 @@ from utilities.ray import Ray
 
 class Hit:
     def __init__(
-            self,
-            triangle: Any,
-            u: float,
-            v: float,
-            distance: float,
-            hit_object: Any,
-            ray: Ray,
+        self,
+        triangle: Any,
+        u: float,
+        v: float,
+        distance: float,
+        hit_object: Any,
+        ray: Ray,
     ):
         self.u = u
         self.v = v
@@ -30,11 +30,14 @@ class Hit:
         TODO right now that just
         copies triangle normal
         """
+
         def normalize(vector):
             return vector / np.linalg.norm(vector)
 
-        dir = np.cross(self.triangle.vertices[1] - self.triangle.vertices[0],
-                       self.triangle.vertices[2] - self.triangle.vertices[0])
+        dir = np.cross(
+            self.triangle.vertices[1] - self.triangle.vertices[0],
+            self.triangle.vertices[2] - self.triangle.vertices[0],
+        )
         self._normal = normalize(dir)
 
     def _calculate_coords(self):
@@ -60,8 +63,8 @@ class Hit:
 
 
 def get_collision(
-        ray: Ray,
-        scene: Scene,
+    ray: Ray,
+    scene: Scene,
 ) -> Optional[Hit]:
     """
     Calculates collision for given ray
