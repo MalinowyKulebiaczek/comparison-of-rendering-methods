@@ -49,6 +49,7 @@ def generate_photon_map(light_source, scene, num_photons, max_depth):
             print("Shot", i, "extra photons, got", len(photon_map), "photon hits so far")
         shoot_photon(photon_map, scene, light_source, max_depth)
         i += 1
+    print("Done!")
             
     # Return the generated photon map
     return photon_map
