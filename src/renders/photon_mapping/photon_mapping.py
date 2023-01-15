@@ -34,45 +34,54 @@ def generate_photon_map(light_source, scene, num_photons, max_depth):
     # Initialize the photon map
     photon_map = []
     print("GENERATING PHOTON MAP")
-    i=0
+    i=1
     # Generate photons from the light source
-    #for i in tqdm(range(num_photons)):
+    for i in tqdm(range(num_photons)):
+        shoot_photon(photon_map, scene, light_source, max_depth)
+    
+    print("Shot", num_photons, "rays, got", len(photon_map), "photon hits")
+    if num_photons > len(photon_map):
+        print("Generating additional photons to get the required number")
+    
+    i=1
     while len(photon_map) < num_photons:
-        # Generate a random direction for the photon
-        direction = generate_random_direction()
         if i % 10000 == 0:
-            print("Shot", i, "rays, got", len(photon_map), "photon hits so far")
+            print("Shot", i, "extra photons, got", len(photon_map), "photon hits so far")
+        shoot_photon(photon_map, scene, light_source, max_depth)
         i += 1
-        # Create a ray for the photon
-        ray = Ray(light_source.position, direction)
-        
-        # Trace the photon through the scene
-        hit = get_collision(ray, scene)
-        
-        # If the photon hit an object
-        if hit:
-            hit_material = scene.get_material(hit.material_id)
-            # Store the photon's information in the photon map
-            photon_map.append(Photon(hit.coords, hit.normal, hit_material.diffusion, -1*ray.direction))
-            
-            # Generate new photons with Russian roulette
-            # Assuming here reflectance is the albedo of the material
-            j = 0
-            while np.random.random() < hit_material.reflectance and j < max_depth:
-                j += 1
-                new_direction = generate_random_direction()
-                new_ray = Ray(hit.coords, new_direction)
-                hit = get_collision(new_ray, scene)
-                if hit:
-                    absorption_factor = hit_material.reflectance
-                    hit_material = scene.get_material(hit.material_id)
-                    photon_map.append(Photon(hit.coords, hit.normal, hit_material.diffusion * absorption_factor, -1*ray.direction))
-                else:
-                    break
             
     # Return the generated photon map
     return photon_map
 
+def shoot_photon(photon_map, scene, light_source, max_depth):
+    # Generate a random direction for the photon
+    direction = generate_random_direction()
+    # Create a ray for the photon
+    ray = Ray(light_source.position, direction)
+    
+    # Trace the photon through the scene
+    hit = get_collision(ray, scene)
+    
+    # If the photon hit an object
+    if hit:
+        hit_material = scene.get_material(hit.material_id)
+        # Store the photon's information in the photon map
+        photon_map.append(Photon(hit.coords, hit.normal, hit_material.diffusion, -1*ray.direction))
+        
+        # Generate new photons with Russian roulette
+        # Assuming here reflectance is the albedo of the material
+        j = 0
+        while np.random.random() < hit_material.reflectance and j < max_depth:
+            j += 1
+            new_direction = generate_random_direction()
+            new_ray = Ray(hit.coords, new_direction)
+            hit = get_collision(new_ray, scene)
+            if hit:
+                absorption_factor = hit_material.reflectance
+                hit_material = scene.get_material(hit.material_id)
+                photon_map.append(Photon(hit.coords, hit.normal, hit_material.diffusion * absorption_factor, -1*ray.direction))
+            else:
+                return
 
 def search_photons(position, photon_map, photon_tree, num_photons = 5):
     #Find the k nearest photons to the hit point
@@ -156,7 +165,9 @@ def trace_ray(
 
     if hit is None:
         return background(procedure, ray)
-    color = np.zeros(3)
+    #color = np.zeros(3)
+    colors = []
+    distances = []
     #Search for the closest photons in the photon map to the hit point
     closest_photons = search_photons(hit.coords, photon_map, photon_tree)
     hit_material = procedure.scene.get_material(hit.material_id)
@@ -165,6 +176,9 @@ def trace_ray(
         diffuse_reflection = max(np.dot(hit.normal, photon.direction), 0)
         #specular_reflection = max(np.dot(hit.normal, (2 * photon.direction - ray.direction)), 0) ** hit.material.shininess
         #Calculate the final color by adding the contribution of the current photon to the color
-        color += diffuse_reflection * photon.color * hit_material.diffusion #+ specular_reflection * photon.color * hit.material.specular
+        colors.append(diffuse_reflection * photon.color * hit_material.diffusion) #+ specular_reflection * photon.color * hit.material.specular
+        distances.append(1/(np.linalg.norm(photon.position - hit.coords) + 1))
+        #color += diffuse_reflection * photon.color * hit_material.diffusion #+ specular_reflection * photon.color * hit.material.specular
 
-    return color / len(closest_photons)
+    return np.average(colors, weights=distances, axis=0)
+    #return color / len(closest_photons)
