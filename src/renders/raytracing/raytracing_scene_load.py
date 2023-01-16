@@ -1,7 +1,6 @@
 import os
 from multiprocessing import Pool, Value
-from functools import partial
-
+import time
 import numpy as np
 from tqdm import tqdm
 
@@ -12,8 +11,10 @@ from scenecomponents.scene import Scene
 from utilities.bitmap import Bitmap
 from utilities.ray import Ray
 
-PROCESS_PROCEDURE = None
-RENDER_STATISTICS = None
+# from numba import njit
+
+process_procedure = None
+intersections = None
 
 
 # na razie zostawiam ten kod z tutoriala tak brzydko zakomentowany - posprzatam potem
@@ -21,27 +22,31 @@ def normalize(vector):
     return vector / np.linalg.norm(vector)
 
 
-def init_worker(procedure: MainProcedure, statistics):
-    global PROCESS_PROCEDURE
-    global RENDER_STATISTICS
-    
-    RENDER_STATISTICS = statistics
-    if PROCESS_PROCEDURE is None:
-        PROCESS_PROCEDURE = procedure
-        PROCESS_PROCEDURE.load_scene()
-        PROCESS_PROCEDURE.load_background()
-        PROCESS_PROCEDURE.scene.load_objects()
-        PROCESS_PROCEDURE.scene.load_materials()
-        PROCESS_PROCEDURE.scene.load_lights()
-        PROCESS_PROCEDURE.scene.load_camera()
+def init_worker(procedure: MainProcedure, intersection_count):
+    global process_procedure
+    global intersections
 
-def increment():
-    with RENDER_STATISTICS.get_lock():
-        RENDER_STATISTICS.value += 1
+    if process_procedure is None:
+        process_procedure = procedure
+        process_procedure.load_scene()
+        process_procedure.load_background()
+        process_procedure.scene.load_objects()
+        process_procedure.scene.load_materials()
+        process_procedure.scene.load_lights()
+        process_procedure.scene.load_camera()
+    if intersections is None:
+        intersections = intersection_count
+
+
+def increment_intersection_counter():
+    with intersections.get_lock():
+        intersections.value += 1
+
 
 def ray_tracing_render(procedure: MainProcedure, max_depth):
-    statistics = Value('licznik', 0)
-    init_worker(procedure=procedure, statistics=statistics)
+    time_start = time.monotonic_ns()
+    intersection_count = Value("i", 0)
+    init_worker(procedure=procedure, intersection_count=intersection_count)
 
     rays = procedure.scene.camera.generate_initial_rays()
     np.random.shuffle(rays)
@@ -51,12 +56,18 @@ def ray_tracing_render(procedure: MainProcedure, max_depth):
     procedure.free_scene()
 
     with Pool(
-        processes=os.cpu_count(), initializer=init_worker, initargs=(procedure,statistics)
+        processes=os.cpu_count(),
+        initializer=init_worker,
+        initargs=(procedure, intersection_count),
     ) as pool:
-        with tqdm(total=len(rays)) as pbar:
-            for ((x, y), color) in pool.imap_unordered(partial(trace_ray_task, counter=statistics), rays):
+        with tqdm(total=len(rays), mininterval=2) as pbar:
+            for ((x, y), color) in pool.imap_unordered(trace_ray_task, rays):
                 bitmap[y, x] = color
                 pbar.update()
+    time_stop = time.monotonic_ns()
+
+    process_procedure.set_statistic("intersections", intersections.value)
+    process_procedure.set_statistic("total_time_ns", time_stop - time_start)
     return bitmap
 
 
@@ -67,13 +78,12 @@ def trace_ray_task(initial_ray):
 
 
 def trace_ray(ray):
-    global PROCESS_PROCEDURE
-    hit = get_collision(ray, PROCESS_PROCEDURE.scene)
+    hit = get_collision(ray, process_procedure.scene)
     if hit is None:
-        color = background(PROCESS_PROCEDURE, ray)
+        color = background(process_procedure, ray)
     else:
-        color = color_at(hit, PROCESS_PROCEDURE.scene)
-        increment()
+        color = color_at(hit, process_procedure.scene)
+        increment_intersection_counter()
     return (color * 255).astype("uint8")
 
 

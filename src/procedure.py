@@ -82,7 +82,10 @@ class MainProcedure:
 
     def load_background(self):
         self.background = Background(self.background_color, self.environment_map)
-        
+
+    def set_statistic(self, key, value):
+        self.statistics[key] = value
+
     def display_statistics(self):
         print(f"Statistics for {self.method_name} method:")
         for key, value in self.statistics.items():
