@@ -36,6 +36,7 @@ class MainProcedure:
         self.max_depth = max_depth
         self.n_photons = n_photons
         self.output_file = output_file
+        self.statistics = {}
 
     def load_scene(self):
         self.scene = Scene.load(self.scene_file, self.resolution)
@@ -81,6 +82,11 @@ class MainProcedure:
 
     def load_background(self):
         self.background = Background(self.background_color, self.environment_map)
+        
+    def display_statistics(self):
+        print(f"Statistics for {self.method_name} method:")
+        for key, value in self.statistics.items():
+            print(f"{key}: {value}")
 
     def render(self):
         if self.method_name == "raytracing":

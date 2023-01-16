@@ -1,5 +1,6 @@
 import os
-from multiprocessing import Pool
+from multiprocessing import Pool, Value
+from functools import partial
 
 import numpy as np
 from tqdm import tqdm
@@ -12,6 +13,7 @@ from utilities.bitmap import Bitmap
 from utilities.ray import Ray
 
 PROCESS_PROCEDURE = None
+RENDER_STATISTICS = None
 
 
 # na razie zostawiam ten kod z tutoriala tak brzydko zakomentowany - posprzatam potem
@@ -19,8 +21,11 @@ def normalize(vector):
     return vector / np.linalg.norm(vector)
 
 
-def init_worker(procedure: MainProcedure):
+def init_worker(procedure: MainProcedure, statistics):
     global PROCESS_PROCEDURE
+    global RENDER_STATISTICS
+    
+    RENDER_STATISTICS = statistics
     if PROCESS_PROCEDURE is None:
         PROCESS_PROCEDURE = procedure
         PROCESS_PROCEDURE.load_scene()
@@ -30,9 +35,13 @@ def init_worker(procedure: MainProcedure):
         PROCESS_PROCEDURE.scene.load_lights()
         PROCESS_PROCEDURE.scene.load_camera()
 
+def increment():
+    with RENDER_STATISTICS.get_lock():
+        RENDER_STATISTICS.value += 1
 
 def ray_tracing_render(procedure: MainProcedure, max_depth):
-    init_worker(procedure=procedure)
+    statistics = Value('licznik', 0)
+    init_worker(procedure=procedure, statistics=statistics)
 
     rays = procedure.scene.camera.generate_initial_rays()
     np.random.shuffle(rays)
@@ -42,10 +51,10 @@ def ray_tracing_render(procedure: MainProcedure, max_depth):
     procedure.free_scene()
 
     with Pool(
-        processes=os.cpu_count(), initializer=init_worker, initargs=(procedure,)
+        processes=os.cpu_count(), initializer=init_worker, initargs=(procedure,statistics)
     ) as pool:
         with tqdm(total=len(rays)) as pbar:
-            for ((x, y), color) in pool.imap_unordered(trace_ray_task, rays):
+            for ((x, y), color) in pool.imap_unordered(partial(trace_ray_task, counter=statistics), rays):
                 bitmap[y, x] = color
                 pbar.update()
     return bitmap
@@ -64,6 +73,7 @@ def trace_ray(ray):
         color = background(PROCESS_PROCEDURE, ray)
     else:
         color = color_at(hit, PROCESS_PROCEDURE.scene)
+        increment()
     return (color * 255).astype("uint8")
 
 
