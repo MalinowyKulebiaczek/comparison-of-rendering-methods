@@ -3,20 +3,11 @@ from multiprocessing import Pool, Value
 import time
 import numpy as np
 from tqdm import tqdm
-
 from procedure import MainProcedure
 from renders.collision import get_collision, calc_triangles
 from utilities.bitmap import Bitmap
 from utilities.ray import Ray
 
-from renders.sampler import RandomSampler
-
-"""
-Comment by: Damian Łysomirski
-I don't think this mapping is present, it is available for various samplers and we don't use them.
-See:
-https://en.wikipedia.org/wiki/Path_tracing
-"""
 process_procedure = None
 intersections = None
 shadow_rays = None
@@ -60,7 +51,6 @@ def random_three_vector():
     """
     Generates a random 3D unit vector (direction) with a uniform spherical distribution
     Algo from http://stackoverflow.com/questions/5408276/python-uniform-spherical-distribution
-    :return:
     """
     u = np.random.random()
     v = np.random.random()
@@ -104,10 +94,12 @@ def path_trace(procedure: MainProcedure) -> Bitmap:
 
     elapsed_time = time.time() - time_start
 
-    #Statistics
+    """
+    Statistics
+    """
     process_procedure.set_statistic("Number of triangles", number_of_traingles)
     process_procedure.set_statistic("Intersections", intersections.value)
-    process_procedure.set_statistic("Number_of_shadow_rays", shadow_rays.value)
+    process_procedure.set_statistic("Number of shadow rays", shadow_rays.value)
     process_procedure.set_statistic("Total_time", str(time.strftime("%H:%M:%S", time.gmtime(elapsed_time))))
     
     return bitmap
@@ -130,9 +122,9 @@ def trace_ray_task(batch):
 def trace_ray(
     procedure: MainProcedure,
     ray: Ray,
-    # sampler: RandomSampler, #Wydaje mi się
     depth: int = 0,
 ) -> np.array:
+
     """
     Trace ray
     """
@@ -150,30 +142,18 @@ def trace_ray(
         origin=hit.coords,
         direction=hemisphere_mapping(
             random_three_vector(), hit.normal
-        ),  # Tu mi się wydaje ze moze blad być
+        ),
     )
 
     probability = 1 / (2 * np.pi)
 
     hit_material = procedure.scene.get_material(hit.material_id)
 
-    emmitance = hit_material.emmitance
-
-    # if emmitance[0] > 0:
-    #    return emmitance
 
     cos_theta = np.dot(new_ray.direction, hit.normal)
 
-    """
-    Na wikipedi jest inaczej z tym brdf ?
-    """
-
-    # brdf = (hit_material.diffusion * cos_theta) + (  # diffusion brdf
-    #    hit_material.reflectance  # reflectance = specular w .dae
-    #    * (np.dot(ray.direction, new_ray.direction) ** hit_material.shininess)
-    # )  # reflectance brdf
+    #Brdf function basen on reflectance
     brdf = hit_material.reflectance / np.pi
-    # brdf = hit_material.diffusion * np.max(cos_theta, 0)
 
     incoming = trace_ray(procedure, new_ray, depth + 1)
 
@@ -186,7 +166,6 @@ def trace_ray(
 
         #Calc number of shadow rays
         shadow_ray = Ray(origin=hit.coords, direction=light_direction)
-        increment_shadow_rays_counter()
         
         hit_between_object_and_light = get_collision(shadow_ray, procedure.scene)
         if hit_between_object_and_light is None or calculate_distance(
@@ -199,6 +178,11 @@ def trace_ray(
                 * np.dot(light_direction, hit.normal)
                 * light_attenuation(light, hit)
             )
+
+        #Calc shadow rays  
+        else:
+            increment_shadow_rays_counter()
+
 
     # RENDER EQUATION
     return (incoming * brdf * cos_theta / probability) + direct_lighting

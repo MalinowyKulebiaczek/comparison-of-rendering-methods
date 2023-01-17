@@ -62,6 +62,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     render_procedure.render()
     render_procedure.display_statistics()
+    render_procedure.save_statistics()
 
     return 0
 
