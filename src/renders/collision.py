@@ -1,10 +1,9 @@
 from typing import Any, Optional
-
 import numpy as np
-
 from scenecomponents.scene import Scene
 from utilities.ray import Ray
 
+np.seterr(divide='ignore', invalid='ignore')
 
 class Hit:
     def __init__(
@@ -60,6 +59,17 @@ class Hit:
     @property
     def material_id(self):
         return self.triangle.material.id
+
+
+def calc_triangles(scene: Scene):
+    number_of_triangles = 0
+
+    for obj in scene.objects:
+        for primitive in obj.primitives:
+            for triangle in primitive.triangles:
+                number_of_triangles = number_of_triangles + 1
+                
+    return number_of_triangles
 
 
 def get_collision(

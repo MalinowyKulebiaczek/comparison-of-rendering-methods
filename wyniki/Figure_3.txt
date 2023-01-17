@@ -1,0 +1,11 @@
+Done:
+Statistics for pathtracing method:
+Number of triangles: 994
+Intersections: 185602
+Number_of_shadow_rays: 185602
+Total_time: 00:08:39
+Scene_file: path_tracing_scene.dae
+Background_file: skbx.jpg
+Resolution: 200
+Max_depth: 3
+Samples: 1
