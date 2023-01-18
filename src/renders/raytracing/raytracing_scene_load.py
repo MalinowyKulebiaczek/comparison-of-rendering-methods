@@ -1,53 +1,79 @@
 import os
-from multiprocessing import Pool
-
+from multiprocessing import Pool, Value
+import time
 import numpy as np
 from tqdm import tqdm
 
 from procedure import MainProcedure
-from renders.collision import get_collision
+from renders.collision import get_collision, calc_triangles
 from renders.pathtracing.pathtrace import background
 from scenecomponents.scene import Scene
 from utilities.bitmap import Bitmap
 from utilities.ray import Ray
 
-PROCESS_PROCEDURE = None
-
+process_procedure = None
+intersections = None
+shadow_rays = None
 
 # na razie zostawiam ten kod z tutoriala tak brzydko zakomentowany - posprzatam potem
 def normalize(vector):
     return vector / np.linalg.norm(vector)
 
+def init_worker(procedure: MainProcedure, intersection_count, shadow_rays_count):
+    global process_procedure
+    global intersections
+    global shadow_rays
 
-def init_worker(procedure: MainProcedure):
-    global PROCESS_PROCEDURE
-    if PROCESS_PROCEDURE is None:
-        PROCESS_PROCEDURE = procedure
-        PROCESS_PROCEDURE.load_scene()
-        PROCESS_PROCEDURE.load_background()
-        PROCESS_PROCEDURE.scene.load_objects()
-        PROCESS_PROCEDURE.scene.load_materials()
-        PROCESS_PROCEDURE.scene.load_lights()
-        PROCESS_PROCEDURE.scene.load_camera()
+    if process_procedure is None:
+        process_procedure = procedure
+        process_procedure.load_scene()
+        process_procedure.load_background()
+        process_procedure.scene.load_objects()
+        process_procedure.scene.load_materials()
+        process_procedure.scene.load_lights()
+        process_procedure.scene.load_camera()
+    if intersections is None:
+        intersections = intersection_count
+    if shadow_rays is None:
+        shadow_rays = shadow_rays_count
 
+def increment_intersection_counter():
+    with intersections.get_lock():
+        intersections.value += 1
+
+def increment_shadow_rays_counter():
+    with shadow_rays.get_lock():
+        shadow_rays.value += 1
 
 def ray_tracing_render(procedure: MainProcedure, max_depth):
-    init_worker(procedure=procedure)
-
+    time_start = time.time()
+    intersection_count = Value("i", 0)
+    shadow_rays_count = Value("i", 0)
+    init_worker(procedure=procedure, intersection_count=intersection_count, shadow_rays_count=shadow_rays_count)
+    number_of_traingles = calc_triangles(procedure.scene)
     rays = procedure.scene.camera.generate_initial_rays()
     np.random.shuffle(rays)
     bitmap = Bitmap(*procedure.scene.camera.resolution)
-    print(f"{procedure.scene.camera.resolution=}")
 
     procedure.free_scene()
 
     with Pool(
-        processes=os.cpu_count(), initializer=init_worker, initargs=(procedure,)
+        processes=os.cpu_count(),
+        initializer=init_worker,
+        initargs=(procedure, intersection_count, shadow_rays_count),
     ) as pool:
-        with tqdm(total=len(rays)) as pbar:
+        with tqdm(total=len(rays), mininterval=2) as pbar:
             for ((x, y), color) in pool.imap_unordered(trace_ray_task, rays):
                 bitmap[y, x] = color
                 pbar.update()
+
+    elapsed_time = time.time() - time_start
+
+
+    process_procedure.set_statistic("Number of triangles", number_of_traingles)
+    process_procedure.set_statistic("Intersections", intersections.value)
+    process_procedure.set_statistic("Number of shadow rays", shadow_rays.value)
+    process_procedure.set_statistic("Total time", str(time.strftime("%H:%M:%S", time.gmtime(elapsed_time))))
     return bitmap
 
 
@@ -58,12 +84,12 @@ def trace_ray_task(initial_ray):
 
 
 def trace_ray(ray):
-    global PROCESS_PROCEDURE
-    hit = get_collision(ray, PROCESS_PROCEDURE.scene)
+    hit = get_collision(ray, process_procedure.scene)
     if hit is None:
-        color = background(PROCESS_PROCEDURE, ray)
+        color = background(process_procedure, ray)
     else:
-        color = color_at(hit, PROCESS_PROCEDURE.scene)
+        color = color_at(hit, process_procedure.scene)
+        increment_intersection_counter()
     return (color * 255).astype("uint8")
 
 
@@ -105,6 +131,9 @@ def color_at(hit, scene):
                 * light_attenuation(light, hit)
             )
 
+        #Calc shadow rays  
+        else:
+            increment_shadow_rays_counter()
             # specular - cytujac klasyka 'something is no yes' w tym miejscu, wiec wywalilem
             # H = normalize(direction_from_hit_to_light + direction_from_hit_to_camera)
             # color += light.color * hit_material.reflectance * max(np.dot(hit.normal, H), 0) ** (hit_material.shininess / 4)
