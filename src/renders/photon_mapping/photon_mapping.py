@@ -30,6 +30,11 @@ def generate_random_direction():
     # Return the generated direction vector
     return coords
 
+def hemisphere_mapping(point: np.array, normal: np.array) -> np.array:
+    if np.dot(point, normal) < 0:
+        return -point
+    else:
+        return point
 
 def generate_photon_map(light_source, scene, num_photons, max_depth):
     # Initialize the photon map
@@ -71,8 +76,9 @@ def shoot_photon(photon_map, scene, light_source, max_depth):
     if hit:
         hit_material = scene.get_material(hit.material_id)
         # Store the photon's information in the photon map
+        color = hit_material.diffusion * light_attenuation(np.linalg.norm(hit.coords - light_source.position))
         photon_map.append(
-            Photon(hit.coords, hit.normal, hit_material.diffusion, -1 * ray.direction)
+            Photon(hit.coords, hit.normal, color, -1 * ray.direction)
         )
 
         # Generate new photons with Russian roulette
@@ -80,17 +86,18 @@ def shoot_photon(photon_map, scene, light_source, max_depth):
         j = 0
         while np.random.random() < hit_material.reflectance and j < max_depth:
             j += 1
-            new_direction = generate_random_direction()
+            new_direction = hemisphere_mapping(generate_random_direction(), hit.normal)
             new_ray = Ray(hit.coords, new_direction)
             hit = get_collision(new_ray, scene)
             if hit:
-                absorption_factor = hit_material.reflectance
                 hit_material = scene.get_material(hit.material_id)
+                color *= hit_material.diffusion 
+                color *= light_attenuation(np.linalg.norm(hit.coords - light_source.position)) * 0.7
                 photon_map.append(
                     Photon(
                         hit.coords,
                         hit.normal,
-                        hit_material.diffusion * absorption_factor,
+                        color,
                         -1 * ray.direction,
                     )
                 )
@@ -98,9 +105,11 @@ def shoot_photon(photon_map, scene, light_source, max_depth):
                 return
 
 
-def search_photons(position, photon_map, photon_tree, num_photons=5):
+def search_photons(position, photon_map, photon_tree, num_photons=10):
     # Find the k nearest photons to the hit point
     _, indices = photon_tree.query(position, k=num_photons)
+    if num_photons == 1:
+        return [photon_map[indices]]
     return [photon_map[i] for i in indices]
 
 
@@ -168,10 +177,8 @@ def trace_ray_task(batch, procedure_template: MainProcedure, photon_map, photon_
     samples = PROCESS_PROCEDURE.samples
 
     for (x, y), ray in tqdm(batch):
-        result = np.array([0.0, 0.0, 0.0])
-        for _ in range(samples):
-            result += trace_ray(PROCESS_PROCEDURE, ray, photon_map, photon_tree)
-        result = (result / samples * 255).astype("uint8")
+        result = trace_ray(PROCESS_PROCEDURE, ray, photon_map, photon_tree)
+        result = (result * 255).astype("uint8")
         colors.append(((x, y), result))
 
     return colors
@@ -185,22 +192,24 @@ def trace_ray(
 
     if hit is None:
         return background(procedure, ray)
-    # color = np.zeros(3)
-    colors = []
-    distances = []
+    color = np.zeros(3)
+    n=0
     # Search for the closest photons in the photon map to the hit point
-    closest_photons = search_photons(hit.coords, photon_map, photon_tree)
+    closest_photons = search_photons(hit.coords, photon_map, photon_tree, 50)
+    #dist = np.linalg.norm(closest_photons[0].position - hit.coords)
+    #return np.array([dist, dist, dist])
     hit_material = procedure.scene.get_material(hit.material_id)
     for photon in closest_photons:
         # Calculate the diffuse and specular reflection using the hit point's normal and the photon's direction
         diffuse_reflection = max(np.dot(hit.normal, photon.direction), 0)
         # specular_reflection = max(np.dot(hit.normal, (2 * photon.direction - ray.direction)), 0) ** hit.material.shininess
         # Calculate the final color by adding the contribution of the current photon to the color
-        colors.append(
-            diffuse_reflection * photon.color * hit_material.diffusion
-        )  # + specular_reflection * photon.color * hit.material.specular
-        distances.append(1 / (np.linalg.norm(photon.position - hit.coords) + 1))
-        # color += diffuse_reflection * photon.color * hit_material.diffusion #+ specular_reflection * photon.color * hit.material.specular
+        if np.linalg.norm(photon.position - hit.coords) <= 0.2:
+            color += diffuse_reflection * photon.color * hit_material.diffusion #+ specular_reflection * photon.color * hit.material.specular
+            n += 1
+    return color / n# len(closest_photons)
 
-    return np.average(colors, weights=distances, axis=0)
-    # return color / len(closest_photons)
+def light_attenuation(dist):
+    return 1 / (
+        dist ** 2 + 1
+    )
