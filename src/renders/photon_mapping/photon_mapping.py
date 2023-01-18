@@ -101,6 +101,7 @@ def shoot_photon(photon_map, scene, light_source, max_depth):
 
     # If the photon hit an object
     if hit:
+        increment_intersection_counter()
         hit_material = scene.get_material(hit.material_id)
         # Store the photon's information in the photon map
         color = hit_material.diffusion * light_attenuation(np.linalg.norm(hit.coords - light_source.position))
@@ -117,6 +118,7 @@ def shoot_photon(photon_map, scene, light_source, max_depth):
             new_ray = Ray(hit.coords, new_direction)
             hit = get_collision(new_ray, scene)
             if hit:
+                increment_intersection_counter()
                 hit_material = scene.get_material(hit.material_id)
                 color *= hit_material.diffusion 
                 color *= light_attenuation(np.linalg.norm(hit.coords - light_source.position)) * 0.7
