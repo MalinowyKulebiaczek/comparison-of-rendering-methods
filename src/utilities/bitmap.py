@@ -22,7 +22,7 @@ class Bitmap:
         return self.image.__setitem__(key, value)
 
     def save(self, output_file):
-        im = Image.fromarray((self.image))
+        im = Image.fromarray(self.image)
         im.save(output_file)
 
     def show(self):

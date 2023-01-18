@@ -15,7 +15,7 @@ process_procedure = None
 intersections = None
 shadow_rays = None
 
-# na razie zostawiam ten kod z tutoriala tak brzydko zakomentowany - posprzatam potem
+
 def normalize(vector):
     return vector / np.linalg.norm(vector)
 
@@ -107,22 +107,15 @@ def get_light_that_shines_on_point(scene: Scene, point):
 def color_at(hit, scene):
     hit_material = scene.get_material(hit.material_id)
     color = np.zeros(3)
-    ambient = [
-        0.1,
-        0.1,
-        0.1,
-    ]  # hit_material.ambient jest zawsze 0, wiec zahardkodowalem 0.1
-    # direction_from_hit_to_camera = normalize(scene.camera.origin - hit.coords)
+
     for light in scene.lights:
-        light_color = np.array(light.color)
+
         direction_from_hit_to_light = normalize(light.position - hit.coords)
         ray = Ray(origin=hit.coords, direction=direction_from_hit_to_light)
         hit_between_object_and_light = get_collision(ray, scene)
-        if hit_between_object_and_light is None or calculate_distance(
-            hit.coords, hit_between_object_and_light.coords
-        ) >= calculate_distance(hit.coords, light.position):
+        if hit_between_object_and_light is None or \
+                calculate_distance(hit.coords, hit_between_object_and_light.coords) >= calculate_distance(hit.coords, light.position):
             # if there is no object between the point and light then it means this light shines on object
-            # color += np.multiply(ambient, light_color/1000)
 
             # diffuse
             color += (
@@ -131,12 +124,9 @@ def color_at(hit, scene):
                 * light_attenuation(light, hit)
             )
 
-        #Calc shadow rays  
+        # calculate shadow rays
         else:
             increment_shadow_rays_counter()
-            # specular - cytujac klasyka 'something is no yes' w tym miejscu, wiec wywalilem
-            # H = normalize(direction_from_hit_to_light + direction_from_hit_to_camera)
-            # color += light.color * hit_material.reflectance * max(np.dot(hit.normal, H), 0) ** (hit_material.shininess / 4)
 
     return color
 
