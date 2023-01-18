@@ -225,7 +225,6 @@ def trace_ray(ray: Ray, photon_map: np.array, photon_tree
     for photon in closest_photons:
         # Calculate the diffuse and specular reflection using the hit point's normal and the photon's direction
         diffuse_reflection = max(np.dot(hit.normal, photon.direction), 0)
-        increment_shadow_rays_counter()
         # specular_reflection = max(np.dot(hit.normal, (2 * photon.direction - ray.direction)), 0) ** hit.material.shininess
         # Calculate the final color by adding the contribution of the current photon to the color
         if np.linalg.norm(photon.position - hit.coords) <= 0.2:
