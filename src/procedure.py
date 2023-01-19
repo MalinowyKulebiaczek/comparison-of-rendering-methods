@@ -1,6 +1,6 @@
 from scenecomponents.background import Background
 from scenecomponents.scene import Scene
-import os.path
+from stats.statutilities import StatisticsUtilities
 
 class MainProcedure:
     """
@@ -43,32 +43,6 @@ class MainProcedure:
 
     def free_scene(self):
         self.scene = None
-        
-    def save_image_to_results(self, image):
-        """
-        Aded some code to archiving results
-        """
-        i = 0
-        path = "wyniki/Figure_1" + "_" + str(self.method_name) + ".png"
-        while os.path.exists(path):
-            i = i +1
-            new_path = "wyniki/Figure_" + str(i) + "_" + str(self.method_name) + ".png"
-            path = new_path
-        else:
-            image.save(path)
-
-    def check_path_for_results(self):
-        """
-        Aded some code to check path to archive statistics
-        """
-        i = 0
-        path = "wyniki/Figure_1" + "_" + str(self.method_name) + ".txt"
-        while os.path.exists(path):
-            i = i +1
-            new_path = "wyniki/Figure_" + str(i) + "_" + str(self.method_name) + ".txt"
-            path = new_path
-        else:
-            return path
 
     def renderPathTrace(self) -> None:
         """
@@ -82,7 +56,7 @@ class MainProcedure:
         image.save(self.output_file)
 
         #To store in archive
-        self.save_image_to_results(image)
+        StatisticsUtilities.save_image_to_results(self.scene_file, self.method_name, image)
 
     def renderRayTrace(self) -> None:
         """
@@ -91,13 +65,13 @@ class MainProcedure:
         from renders.raytracing.raytracing_scene_load import ray_tracing_render
 
         print("Started rendering. Please wait...")
-        image = ray_tracing_render(self, self.max_depth)
+        image = ray_tracing_render(self)
         print("Done!")
         image.show()
         image.save(self.output_file)
 
         #To store in archive
-        self.save_image_to_results(image)
+        StatisticsUtilities.save_image_to_results(self.scene_file, self.method_name, image)
 
     def renderPhotonMap(self) -> None:
         """
@@ -112,48 +86,13 @@ class MainProcedure:
         image.save(self.output_file)
 
         #To store in archive
-        self.save_image_to_results(image)
+        StatisticsUtilities.save_image_to_results(self.scene_file, self.method_name, image)
 
     def load_background(self):
         self.background = Background(self.background_color, self.environment_map)
 
     def set_statistic(self, key, value):
         self.statistics[key] = value
-
-    def display_statistics(self):
-        print(f"Statistics for {self.method_name} method:")
-        for key, value in self.statistics.items():
-            print(f"{key}: {value}")
-        #Aded some render parameters to statistics display
-        print(f"Scene file: {self.scene_file}")
-        print(f"Environment map file: {self.environment_map}")
-        print(f"Resolution: {self.resolution}")
-        print(f"Max_depth: {self.max_depth}")
-        if self.method_name == "raytracing":
-            pass
-        elif self.method_name == "pathtracing":
-            print(f"Samples: {self.samples}")
-        elif self.method_name == "photon_mapping":
-            print(f"Number of photons:: {self.n_photons}")
-
-    def save_statistics(self):
-        path = str(self.check_path_for_results())
-        with open(path, 'w+') as file:
-            print(f"Statistics for {self.method_name} method:", file=file)
-            for key, value in self.statistics.items():
-                print(f"{key}: {value}",file=file)
-            #Aded some render parameters to statistics display
-            print(f"Scene file: {self.scene_file}",file=file)
-            print(f"Environment map file: {self.environment_map}",file=file)
-            print(f"Resolution: {self.resolution}",file=file)
-            print(f"Max_depth: {self.max_depth}",file=file)
-            if self.method_name == "raytracing":
-                pass
-            elif self.method_name == "pathtracing":
-                print(f"Samples: {self.samples}",file=file)
-            elif self.method_name == "photon_mapping":
-                print(f"Number of photons:: {self.n_photons}",file=file)
-
 
     def render(self):
         if self.method_name == "raytracing":
