@@ -1,0 +1,9 @@
+Number of triangles: 994
+Intersections: 2974703
+Number of shadow rays: 447478
+Total_time: 01:29:13
+Scene file: src/scenes/path_tracing_scene.dae
+Environment map file: src/scenes/skbx2.jpg
+Resolution: 200
+Max_depth: 3
+Samples: 16
