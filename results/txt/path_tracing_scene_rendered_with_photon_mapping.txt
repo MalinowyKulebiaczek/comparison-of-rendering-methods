@@ -1,0 +1,10 @@
+Statistics for photon_mapping method:
+Number of triangles: 994
+Intersections: 124215
+Number of shadow rays: 0
+Total time: 00:02:57
+Scene file: scenes/path_tracing_scene.dae
+Environment map file: scenes/skbx.jpg
+Resolution: 200
+Max_depth: 3
+Number of photons: 50000

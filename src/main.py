@@ -3,6 +3,7 @@ import argparse
 from typing import Optional, Sequence
 
 from procedure import MainProcedure
+from stats.statutilities import StatisticsUtilities
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -61,8 +62,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
 
     render_procedure.render()
-    render_procedure.display_statistics()
-    render_procedure.save_statistics()
+    StatisticsUtilities.display_statistics(render_procedure)
+    StatisticsUtilities.save_statistics(render_procedure)
 
     return 0
 

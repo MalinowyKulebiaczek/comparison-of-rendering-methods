@@ -45,7 +45,7 @@ def increment_shadow_rays_counter():
     with shadow_rays.get_lock():
         shadow_rays.value += 1
 
-def ray_tracing_render(procedure: MainProcedure, max_depth):
+def ray_tracing_render(procedure: MainProcedure):
     time_start = time.time()
     intersection_count = Value("i", 0)
     shadow_rays_count = Value("i", 0)
