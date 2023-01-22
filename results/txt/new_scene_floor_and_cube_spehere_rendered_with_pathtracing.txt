@@ -1,0 +1,10 @@
+Statistics for pathtracing method:
+Number of triangles: 996
+Intersections: 31564
+Number of shadow rays: 10956
+Total_time: 00:05:43
+Scene file: src/scenes/new_scene_floor_and_cube_spehere.dae
+Environment map file: src/scenes/skbx.jpg
+Resolution: 200
+Max_depth: 3
+Samples: 1

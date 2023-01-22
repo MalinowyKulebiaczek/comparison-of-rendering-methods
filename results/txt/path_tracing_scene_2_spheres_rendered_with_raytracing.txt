@@ -1,0 +1,9 @@
+Statistics for raytracing method:
+Number of triangles: 1930
+Intersections: 68515
+Number of shadow rays: 6154
+Total time: 00:04:48
+Scene file: src/scenes/path_tracing_scene_2_spheres.dae
+Environment map file: src/scenes/skbx.jpg
+Resolution: 200
+Max_depth: 3

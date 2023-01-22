@@ -2,7 +2,7 @@ import os
 
 
 class StatisticsUtilities:
-    RESULT_DIRECTORY = "../results"  # if No Such File or Directory error occurs then try deleting "../"
+    RESULT_DIRECTORY = "./results"  # if No Such File or Directory error occurs then try deleting "../"
     PNG_DIRECTORY = "/png/"
     TXT_DIRECTORY = "/txt/"
     PLOT_DIRECTORY = "/plots/"
