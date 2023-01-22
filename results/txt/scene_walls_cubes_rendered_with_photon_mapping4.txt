@@ -1,0 +1,10 @@
+Statistics for photon_mapping method:
+Number of triangles: 34
+Intersections: 335940
+Number of shadow rays: 0
+Total time: 00:02:58
+Scene file: src/scenes/scene_walls_cubes.dae
+Environment map file: src/scenes/skbx2.jpg
+Resolution: 400
+Max_depth: 3
+Number of photons: 50000
